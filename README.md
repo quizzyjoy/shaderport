@@ -12,6 +12,16 @@
 
 设计目标是"**可被真实产品使用**"：首个落地场景是一个原生 GLES 音乐可视化 App 的背景与主视效分层，不是玩具 demo。
 
+## 与上游的关系（重要声明）
+
+> **本项目是完全独立的第三方项目，不是 `shader-effects-inc/shaders` 的官方移植、不是其 fork，也未获得 Shader Effects Inc. 的背书或赞助。** 两者无任何组织关系。
+>
+> 项目名、包名与标识**不包含**上游品牌词；关系仅在文档中作事实性说明。完整政策见 [docs/provenance-and-naming.md](./docs/provenance-and-naming.md)。
+
+若某个效果**移植自**上游代码（MIT）——含自动转译产物——该效果会在 `spec.md` 中登记来源，文件头保留版权与许可声明，并汇总到 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。**移植即衍生作品**，我们不回避这一点。
+
+**定位是互补而非竞争**：上游覆盖 WebGPU/Web 侧；本项目覆盖 **native GLES 与 WebGPU 不可用的受限 Web**（例如 HarmonyOS ArkWeb 实测 `requestAdapter()` 返回 null），并提供离线转换。
+
 ## 为什么需要它
 
 | 现实 | 后果 |
