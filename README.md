@@ -65,6 +65,16 @@ shadeport/
 - [`gfx-rs/wgpu` 的 `naga`](https://github.com/gfx-rs/wgpu)（MIT/Apache-2.0）—— WGSL 前端与 **GLSL ES 300/310 后端**，是转换工具的基石。
 - [`software-mansion/TypeGPU`](https://github.com/software-mansion/TypeGPU)（MIT）—— 其 `@typegpu/gl` 提供了 WebGL/GLSL 侧的可行性证据。
 
+## 主体与联系
+
+本项目由 **河南趣知易解互联网科技有限公司（品牌 QuizzyJoy，一人公司 OPC）** 创建与维护。日常开发由创始人进行；**版权与商标归属公司**（Apache-2.0 只授予使用许可，不转让版权）。
+
+| 用途 | 联系 |
+|---|---|
+| **安全问题（请勿公开 issue）** | security@quizzyjoy.com |
+| 一般咨询 / 合作 / 行为准则举报 | opensource@quizzyjoy.com |
+| 官网 | https://quizzyjoy.com |
+
 ## 许可
 
-[Apache-2.0](./LICENSE) © 2026 闫东阳
+[Apache-2.0](./LICENSE) © 2026 河南趣知易解互联网科技有限公司（QuizzyJoy）

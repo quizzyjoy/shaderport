@@ -5,13 +5,13 @@
 
 ## 0. 结论速览
 
-1. **隶属**：`shadeport` 是**完全独立的第三方项目**——不是 `shader-effects-inc/shaders` 的官方移植、不是 fork、未获其背书或赞助，两者无任何组织关系。
+1. **隶属**：`shadeport` 是**完全独立的第三方项目**（由 **河南趣知易解互联网科技有限公司 / QuizzyJoy** 创建与维护）——不是 `shader-effects-inc/shaders` 的官方移植、不是 fork、未获其背书或赞助，两者无任何组织关系。
 2. **命名**：项目名/包名**一律不包含上游品牌**（不带 `shaders`、`shader-effects`、`shaders.com` 等字样）。关系只在**文档里描述**，不体现在名字里。
 3. **溯源**：每个效果必须声明来源类别（`original` / `ported` / `inspired`）与许可；**移植来的代码必须保留上游版权与许可声明**，并记录上游路径与版本。
 
 ## 1. 隶属关系（Affiliation）
 
-**事实**：本项目由个人开发者独立发起与维护，与 Shader Effects Inc.、`shader-effects-inc/shaders` 项目**没有雇佣、赞助、合作、授权或背书关系**。
+**事实**：本项目由 **河南趣知易解互联网科技有限公司（品牌 QuizzyJoy，一人公司 OPC）** 创建与维护；日常开发由创始人进行，**版权与商标归属公司**。与 Shader Effects Inc.、`shader-effects-inc/shaders` 项目**没有雇佣、赞助、合作、授权或背书关系**。
 
 **必须做的表述**（README 醒目位置）：
 
