@@ -32,6 +32,46 @@
 - "**compatible with** the effect presets of …"（仅在确实验证过兼容时使用）
 - "**inspired by** the approach of …，**does not include its code**"
 
+## 1.1 对外署名：品牌名 / 法定名 / 英文名的使用边界
+
+主体是**中国境内注册的一人公司**，工商登记只有**中文法定全称**；所谓"英文名"通常是**对外翻译/拼音转写**（除非另有海外注册实体）。三个名字各管一处，**不要混用、也不要让其中一个冒充另一个**：
+
+| 名字 | 用在哪 | 不用在哪 |
+|---|---|---|
+| **品牌名 `QuizzyJoy`** | GitHub 组织 handle（`quizzyjoy`）、仓库/包名、官网、UI、README 标题、包 `author` 的显示部分 | 不作为"法定主体"出现在版权行 |
+| **法定全称** `河南趣知易解互联网科技有限公司` | 版权行（`NOTICE`/README 许可段）、OHPM **企业实名**、合同/发票、CoC 与法务类声明 | 不作为 handle 或包名（太长且非法定要求） |
+| **英文名（拼音/翻译）** | 仅在国际场景**可选**补充，如 GitHub 组织简介里的括注 | 不写成 `Co., Ltd.` 形式冒充"海外注册实体"（无海外实体时尤其不要） |
+
+**GitHub 上的结论：不需要工商英文名。** 身份可信度靠**域名认证（Verified domain）**，不靠英文名：
+
+| GitHub 字段 | 建议填法 |
+|---|---|
+| Organization **handle** | `quizzyjoy`（与域名一致，唯一不可改） |
+| Organization **display name** | `QuizzyJoy`（或 `QuizzyJoy · 趣知易解`） |
+| **Bio / Description** | `开源的 HarmonyOS 应用与 GPU 效果工具 · 河南趣知易解互联网科技有限公司` |
+| **Website** | `https://quizzyjoy.com` |
+| **Email** | `opensource@quizzyjoy.com` |
+| **Location** | `Zhengzhou, China`（按实际） |
+| **Verified domains** | 添加 `quizzyjoy.com`（DNS TXT 验证）→ 组织页显示 Verified 徽章 |
+| **Organization profile README**（仓库 `<org>/.github` 的 `profile/README.md`） | 在这里写清"品牌 = 法定主体"的关系（模板见下） |
+
+**组织 profile README 模板**（可复用）：
+
+```markdown
+# QuizzyJoy
+
+开源的 HarmonyOS 应用与 GPU 效果工具。
+
+**QuizzyJoy** 是 **河南趣知易解互联网科技有限公司**（China, one-person company）的品牌名。
+本组织下的开源项目均为独立项目，与任何第三方厂商无隶属或背书关系。
+
+- 官网：https://quizzyjoy.com
+- 开源项目：`shadeport`（Portable GPU effects for OpenGL ES 3.0）
+- 联系：opensource@quizzyjoy.com
+```
+
+> 若将来确有海外实体或正式登记的英文名，再把它补进本表与 `NOTICE`；**在确有登记之前，不要使用 "Co., Ltd." 形式**。
+
 ## 2. 法律基础
 
 | 事项 | 结论 |
