@@ -72,6 +72,20 @@
 
 > 若将来确有海外实体或正式登记的英文名，再把它补进本表与 `NOTICE`；**在确有登记之前，不要使用 "Co., Ltd." 形式**。
 
+## 1.2 提交身份（author）与邮箱规范
+
+提交历史是**永久公开**的，邮箱会出现在每个 commit 里。规范：
+
+| 项 | 规定 |
+|---|---|
+| **author 姓名** | 真名或稳定笔名，全仓一致（例：`闫东阳` 或 `Dongyang Yan`） |
+| **author 邮箱** | **必须**是下列之一：<br>① 公司域名邮箱（`opensource@quizzyjoy.com`）<br>② GitHub 私有 noreply（`<id>+<handle>@users.noreply.github.com`，在 GitHub Settings → Emails 勾选 "Keep my email addresses private" 后获得） |
+| **禁止** | ❌ 手机号邮箱、❌ 个人 QQ/163 邮箱作为公开提交邮箱（历史永久可查，且易被爬取骚扰） |
+| **committer** | 与 author 一致；如需用不同身份，须在 PR 说明 |
+| **一次性重写** | 首次推送到公开仓**之前**可安全改写历史（`git rebase -i --root` / `filter-branch`）；**一旦公开即不要改写**（会破坏他人在此基础上的工作） |
+
+GitHub 组织层面的设置建议：组织 Settings → **Require two-factor authentication**、**Verified domains**（`quizzyjoy.com`）、禁用"允许成员创建公开仓库"以外的宽松项（按需）。
+
 ## 2. 法律基础
 
 | 事项 | 结论 |
