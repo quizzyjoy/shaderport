@@ -1,0 +1,15 @@
+{
+  "name": "entry",
+  "version": "0.1.0",
+  "description": "shaderport demo entry: effect gallery and GLES capability probe.",
+  "main": "",
+  "author": {
+    "name": "河南趣知易解互联网科技有限公司",
+    "email": "opensource@quizzyjoy.com",
+    "url": "https://quizzyjoy.com"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "libentry.so": "file:./src/main/cpp/types/libentry"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@quizzyjoy/shaderport",
+  "version": "0.1.0",
+  "description": "Portable GPU effects for OpenGL ES 3.0: WGSL to GLSL ES 3.00 converter and effect pack.",
+  "main": "Index.ets",
+  "author": {
+    "name": "河南趣知易解互联网科技有限公司",
+    "email": "opensource@quizzyjoy.com",
+    "url": "https://quizzyjoy.com"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/quizzyjoy/shaderport",
+  "repository": "https://github.com/quizzyjoy/shaderport",
+  "bugs": "https://github.com/quizzyjoy/shaderport/issues",
+  "keywords": ["shader", "glsl", "gles", "opengl-es", "harmonyos", "wgsl"],
+  "tags": ["graphics", "opengl-es"],
+  "ohos": { "org": "opensource" },
+  "dependencies": {}
+}

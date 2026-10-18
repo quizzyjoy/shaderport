@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "shaderport demo entry"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "shaderport effect gallery and GLES capability probe"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "shaderport"
+    }
+  ]
+}
