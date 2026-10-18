@@ -6,6 +6,9 @@
 ![Status](https://img.shields.io/badge/status-design%20phase-orange)
 ![GLES](https://img.shields.io/badge/OpenGL%20ES-3.0-green)
 
+> **主仓（source of truth）**：[GitHub `quizzyjoy/shadeport`](https://github.com/quizzyjoy/shadeport)。
+> GitCode / Gitee 上的同名仓库为**只读镜像**；**issue 与 PR 请提交到 GitHub**。
+
 ## 简介
 
 `shadeport` 把一个现实问题摊开：**现代 GPU 着色器效果正被 WebGPU 垄断，而大量真实设备只有 OpenGL ES 3.0**（HarmonyOS/ArkWeb、旧 Android WebView、老设备原生 App）。本项目提供两样东西：
