@@ -1,4 +1,4 @@
-# shadeport
+# shaderport
 
 > **Portable GPU effects for OpenGL ES 3.0** — a WGSL → GLSL ES 3.00 converter plus a curated, production-tested shader effect pack.
 
@@ -6,12 +6,12 @@
 ![Status](https://img.shields.io/badge/status-design%20phase-orange)
 ![GLES](https://img.shields.io/badge/OpenGL%20ES-3.0-green)
 
-> **主仓（source of truth）**：[GitHub `quizzyjoy/shadeport`](https://github.com/quizzyjoy/shadeport)。
+> **主仓（source of truth）**：[GitHub `quizzyjoy/shaderport`](https://github.com/quizzyjoy/shaderport)。
 > GitCode / Gitee 上的同名仓库为**只读镜像**；**issue 与 PR 请提交到 GitHub**。
 
 ## 简介
 
-`shadeport` 把一个现实问题摊开：**现代 GPU 着色器效果正被 WebGPU 垄断，而大量真实设备只有 OpenGL ES 3.0**（HarmonyOS/ArkWeb、旧 Android WebView、老设备原生 App）。本项目提供两样东西：
+`shaderport` 把一个现实问题摊开：**现代 GPU 着色器效果正被 WebGPU 垄断，而大量真实设备只有 OpenGL ES 3.0**（HarmonyOS/ArkWeb、旧 Android WebView、老设备原生 App）。本项目提供两样东西：
 
 1. **转换与规范化工具** —— 把 WGSL 转成 GLSL ES 3.00，并报出目标能力的缺口（`@compute`、storage texture、浮点渲染目标等）；
 2. **效果包与规格** —— 一批可在 GLES 3.0 跑的效果（GLSL ES 源码 + 参数规格 + 参考图 + 成本档），以及把它们接进 native/Web 两侧的集成示例。
@@ -28,15 +28,15 @@
 
 ```bash
 # HarmonyOS（ohpm 中心仓，发布后）
-ohpm install @quizzyjoy/shadeport
+ohpm install @quizzyjoy/shaderport
 
 # npm（发布后，供 Web 侧示例使用）
-npm install @quizzyjoy/shadeport
+npm install @quizzyjoy/shaderport
 ```
 
 **当前可用方式**（源码）：
 ```bash
-git clone https://github.com/quizzyjoy/shadeport.git
+git clone https://github.com/quizzyjoy/shaderport.git
 # 直接引用 effects/<name>/shader.glsl 与 spec.md
 ```
 
@@ -53,7 +53,7 @@ git clone https://github.com/quizzyjoy/shadeport.git
 
 **ArkTS 侧（取效果规格与着色器资源；渲染由宿主 native 层完成）**：
 ```ts
-import { listEffects, getEffect, getShaderSource } from '@quizzyjoy/shadeport'
+import { listEffects, getEffect, getShaderSource } from '@quizzyjoy/shaderport'
 
 // 1) 看有哪些效果（含用途层与成本档）
 const effects = listEffects()
@@ -99,7 +99,7 @@ const fragment = getShaderSource('mesh-gradient', 'fragment')
 ## 目录结构
 
 ```
-shadeport/
+shaderport/
 ├── LICENSE / NOTICE / THIRD_PARTY_NOTICES.md   Apache-2.0 + 第三方归属
 ├── README.md / CHANGELOG.md / CONTRIBUTING.md / CODE_OF_CONDUCT.md
 ├── .github/PULL_REQUEST_TEMPLATE.md            含"溯源自检"必勾项

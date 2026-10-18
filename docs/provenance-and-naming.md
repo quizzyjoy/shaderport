@@ -1,11 +1,11 @@
 # 与上游的关系：隶属、命名与溯源政策
 
-> 适用对象：`shadeport` 项目及其产出的效果、工具、文档。
+> 适用对象：`shaderport` 项目及其产出的效果、工具、文档。
 > 状态：v1 · 2026-10-16 · 变更需走 PR（本文件是政策，不是建议）
 
 ## 0. 结论速览
 
-1. **隶属**：`shadeport` 是**完全独立的第三方项目**（由 **河南趣知易解互联网科技有限公司 / QuizzyJoy** 创建与维护）——不是 `shader-effects-inc/shaders` 的官方移植、不是 fork、未获其背书或赞助，两者无任何组织关系。
+1. **隶属**：`shaderport` 是**完全独立的第三方项目**（由 **河南趣知易解互联网科技有限公司 / QuizzyJoy** 创建与维护）——不是 `shader-effects-inc/shaders` 的官方移植、不是 fork、未获其背书或赞助，两者无任何组织关系。
 2. **命名**：项目名/包名**一律不包含上游品牌**（不带 `shaders`、`shader-effects`、`shaders.com` 等字样）。关系只在**文档里描述**，不体现在名字里。
 3. **溯源**：每个效果必须声明来源类别（`original` / `ported` / `inspired`）与许可；**移植来的代码必须保留上游版权与许可声明**，并记录上游路径与版本。
 
@@ -15,7 +15,7 @@
 
 **必须做的表述**（README 醒目位置）：
 
-> `shadeport` is an independent project. It is **not affiliated with, endorsed by, or sponsored by** Shader Effects Inc. or the `shader-effects-inc/shaders` project.
+> `shaderport` is an independent project. It is **not affiliated with, endorsed by, or sponsored by** Shader Effects Inc. or the `shader-effects-inc/shaders` project.
 
 **禁止的表述**：
 
@@ -66,7 +66,7 @@
 本组织下的开源项目均为独立项目，与任何第三方厂商无隶属或背书关系。
 
 - 官网：https://quizzyjoy.com
-- 开源项目：`shadeport`（Portable GPU effects for OpenGL ES 3.0）
+- 开源项目：`shaderport`（Portable GPU effects for OpenGL ES 3.0）
 - 联系：opensource@quizzyjoy.com
 ```
 
@@ -103,7 +103,7 @@ GitHub 组织层面的设置建议：组织 Settings → **Require two-factor au
 
 | 档 | 示例 | 评价 |
 |---|---|---|
-| **A. 独立功能名（采用）** | `shadeport`、`glessence` | ✅ 无品牌关联，无商标风险；关系由文档说明 |
+| **A. 独立功能名（采用）** | `shaderport`、`glessence` | ✅ 无品牌关联，无商标风险；关系由文档说明 |
 | B. 描述性技术名 | `wgsl-to-gles`、`gles-effect-kit` | ⚪ 可接受，但通用、搜索易淹没 |
 | C. 派生式命名 | `shaders-es`、`shaders-port`、`shaders-for-gles` | ❌ 暗示官方派生、与 npm/ohpm 上 `shaders` 混淆、一旦被异议改名成本极高（注册表名永久占用） |
 
@@ -116,7 +116,7 @@ GitHub 组织层面的设置建议：组织 Settings → **Require two-factor au
 
 - 效果目录用**功能描述名**（`mesh-gradient`、`contour-lines`），**不直接照搬上游组件名**（如 `MeshGradient`）；
 - 上游对应关系写进该效果的 `spec.md` 的「来源」字段；
-- 包名若将来拆分：`shadeport-core`、`shadeport-effects` —— 不得出现 `@shadeport/shaders` 这类擦边命名。
+- 包名若将来拆分：`shaderport-core`、`shaderport-effects` —— 不得出现 `@shaderport/shaders` 这类擦边命名。
 
 ## 4. 溯源分类（Provenance classes）
 
