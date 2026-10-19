@@ -65,15 +65,17 @@
 | 2 | `examples/gles-cpp` 由 `harmony/entry` 生成，不维护第二份宿主 |
 | 3 | 示例接入**窗口缩放与鼠标输入**；`deviceTypes` 仍为 `phone` + `tablet`，不新增设备类型 |
 
-## 7. 排除清单（15 个，已实测）
+## 7. 排除清单（12 个，已实测）
 
 | 原因 | 效果 |
 |---|---|
-| WGSL 本身非法 | `Satin`、`Strands`、`FlowField`、`Goo`、`Irradiance`、`SmokeFill` |
+| WGSL 解析失败 | `Satin`、`Strands`、`FlowField` |
 | 依赖媒体/数据纹理（导出期失败） | `Ascii`、`ChromaFlow`、`FilmStock`、`HTMLInCanvas`、`ImageTexture`、`PixelThrow`、`Text` |
 | `texture_external` 无 GLES 对应 | `VideoTexture`、`WebcamTexture` |
 
-可移植基数 **185** 个。
+可移植基数 **188** 个：`200` 注册 → `193` 导出 → `188` 转换成功 → `234/234` pass 编译+链接通过。
+
+> 与 `docs/03` 的差异：`Goo`、`Irradiance`、`SmokeFill` 在**组合导出**（filter/warp 挂在 Plasma 上）下能正常解析并通过编译门禁，文档里"WGSL 非法"的结论来自单效果导出。它们暂不进首批，先做观感验证再决定是否收录。
 
 ## 8. 单个效果的 DoD
 
