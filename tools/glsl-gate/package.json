@@ -1,0 +1,13 @@
+{
+  "name": "shaderport-glsl-gate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Compile+link gate for shaderport GLSL ES 3.00 output (headless Chrome / WebGL2 / ANGLE).",
+  "scripts": {
+    "gate": "node run.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "24.15.0"
+  }
+}
