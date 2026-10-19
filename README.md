@@ -97,7 +97,7 @@ nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
 | 数组 | 用 `GL_UNIFORM_ARRAY_STRIDE` 按元素写入（vec3 数组有 16 字节 padding） |
 | 颜色 | **不要**再做 sRGB→linear；final pass 已经带 sRGB OETF，**不要**再次编码 |
 | alpha | 中间 RTT 为 premultiplied；final 前按 shader 的 `unpremultiplyAlpha` 处理 |
-| 运行时 uniform | `_sys.*`（time/viewport/aspect/pointer）、`_animTime`、`_opacity` 由宿主填 |
+| 运行时 uniform | `_sys.*`（`time` / `viewportSize` / `logicalViewportSize` / `aspect` / `pointer` / `pointerActive`）、`n_n._animTime`、`n_n._opacity` 由宿主填 |
 | 指针 | `_sys.pointer` 为归一化 `[0,1]`，**y 从顶部起算** |
 | 缩放 | 可整条链渲染到低分辨率 FBO 再上采样（示例提供 1x/0.75x/0.5x） |
 
@@ -180,6 +180,15 @@ shaderport/
 > 本项目是完全独立的第三方项目，不是 `shader-effects-inc/shaders` 的官方移植、不是其 fork，也未获其背书。
 >
 > 48 个效果由上游 WGSL 自动转译为 GLSL ES 3.00（`ported`），每个文件保留 MIT 声明；逐条来源见 `spec.json` 的 `provenance` 与 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
+
+## 贡献
+
+欢迎 issue 与 PR，开始之前请先读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+
+- **缺陷**：附最小复现（效果 id、参数值、GPU 型号、期望与实际）；
+- **效果 / 工具改动**：先开 issue 对齐范围与成本预算；
+- **提交前**：`npm run export && npm run convert && npm run gate && npm run sync`；
+- **不要提交签名材料**（证书、私钥、`.p12`、`.cer`），见 [`docs/signing.md`](./docs/signing.md)。
 
 ## 主体与联系
 

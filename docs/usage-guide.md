@@ -135,11 +135,12 @@ for (int i = 0; i < passCount; ++i) {
 | 路径 | 含义 |
 |---|---|
 | `_sys.time` | 秒（暂停时冻结） |
-| `_sys.viewport` | 像素宽高 |
+| `_sys.viewportSize` | 像素宽高（vec2） |
+| `_sys.logicalViewportSize` | 逻辑宽高（vp，vec2） |
 | `_sys.aspect` | `w/h` |
 | `_sys.pointer` | 归一化 `[0,1]`，**y 从顶部起算** |
 | `_sys.pointerActive` | 0/1 |
-| `_animTime` / `_opacity` | 动画时间 / 整体不透明度 |
+| `n_n._animTime` / `n_n._opacity` | 动画时间 / 整体不透明度 |
 
 ### 4.6 缩放档位（性能救命）
 
@@ -205,8 +206,8 @@ node tools/render-reference/run.mjs --capture /tmp/cap.rgba --only plasma
 
 | 现象 | 原因 / 处理 |
 |---|---|
-| **整图发灰** | 做了两次 sRGB 编码。final pass 已带 OETF，**不要**再加 gamma；RTT 中间纹理用 `RGBA16F` |
-| 上下颠倒 | UV 的 y 方向不对。`_sys.pointer` 约定 y 从顶部起算，UV 按 GL 习惯自下而上 |
+| **整图发灰** | 做了两次 sRGB 编码。final pass 已带 OETF，**不要**再加 gamma；示例的 RTT 用 `RGBA8`，需要 HDR 时再改 `RGBA16F`（先确认 `EXT_color_buffer_float`） |
+| 上下颠倒 | UV 契约是 **y 向下**（与 WGSL 一致），不要再翻一次；`_sys.pointer` 同样从顶部起算 |
 | 黑屏、无报错 | 检查 `glGetShaderInfoLog` / `glGetProgramInfoLog`；确认 final pass 是最后一个 |
 | 参数改了没反应 | 名字必须用 `encodeParam` 返回的 `name`（`n_n.xxx`），不能自己拼 |
 | 数组类参数错位 | 忘了 `GL_UNIFORM_ARRAY_STRIDE`（`vec3[]` 每元素 16 字节） |

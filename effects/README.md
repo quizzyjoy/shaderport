@@ -9,17 +9,18 @@ effects/<name>/
 └── reference.png      # 参考图（固定参数、固定分辨率的渲染结果）
 ```
 
-- **`spec.json` 是唯一源**，`spec.md` 由它生成（不再手写）；字段说明见下方模板。
+- **`spec.json` 是唯一源**；`spec.md` 仅作可选的人类可读视图（v0.1 不提交），字段语义见下方模板。
 - **多 pass**：按 `spec.passes` 的 `index` 顺序渲染，最后一项是 final；文件一律是**片元着色器**，全屏顶点着色器由宿主提供（`#version 300 es`，varying 名与片元一致）。
 - **口径**：所有 pass 的输出**已包含 sRGB OETF**（见 `spec.color`），宿主不得再次编码；中间 RTT 为 premultiplied alpha，final 前需 unpremultiply。
 - `spec.json` / `passes/` 由 `tools/sync-effects` 生成；`reference.png` 由参考渲染器生成，**不手改**。
+- **已收录 48 个**，索引见 `harmony/library/src/main/resources/rawfile/effects/index.json`。
 
 ## 命名
 
 - 目录名与效果名：**小写 + 连字符**（如 `mesh-gradient`、`contour-lines`、`dot-grid`），与上游组件名解耦（便于各自演进）。
 - 同一效果的不同实现变体加后缀：`mesh-gradient.gles`、`mesh-gradient.webgl2`（仅在确实需要时）。
 
-## 规格模板（`spec.md` 由 `spec.json` 生成；v0.1 暂只提交 `spec.json`）
+## 规格模板（字段语义；`spec.md` 仅作可选视图）
 
 ```markdown
 # <效果名>（<English Name>）

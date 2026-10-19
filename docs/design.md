@@ -1,6 +1,9 @@
 # 设计说明（design）
 
-> 状态：v0.1 设计阶段 · 最后更新 2026-10-16
+> 状态：v0.1 已实现（48 个效果）· 最后更新 2026-10-20
+>
+> 本文保留立项时的背景与取舍；实现结果与验收数据见 `README.md`、`docs/device-matrix.md`
+> 与 `docs/roadmap-1.0.md`。
 
 ## 1. 问题
 
@@ -36,12 +39,12 @@
 | **效果按用途分层（背景 / 主视效）** | 两者的成本预算、对比度、干扰度要求完全不同；混在一起会导致"背景抢戏"或"主视效不够猛" |
 | **许可 Apache-2.0** | OpenHarmony 生态推荐；与专利授权条款更明确；便于被商业项目采用 |
 
-## 5. 架构（计划）
+## 5. 架构（已实现）
 
 ```
 ┌────────────────────┐     ┌──────────────────────┐     ┌───────────────────┐
 │  效果定义（规格）    │ ──▶ │ tools/wgsl2glsles    │ ──▶ │ effects/<name>/   │
-│  uniform / 成本 / 层 │     │ naga 后端 + 能力检查   │     │ shader.glsl + spec│
+│  uniform / 成本 / 层 │     │ naga 后端 + 能力检查   │     │ passes/*.glsl + spec.json │
 └────────────────────┘     └──────────────────────┘     └───────────────────┘
                                      │                            │
                                      ▼                            ▼
@@ -53,13 +56,17 @@
 
 ## 6. 与上游项目的关系
 
-- 上游 [`shader-effects-inc/shaders`](https://github.com/shader-effects-inc/shaders)（MIT）是 **WebGPU 效果库**；本项目**不包含其代码**，只参考其效果选型与规格思路；其渲染后端接缝在 `packages/core/src/gpu`（`@coreroot/gpu/kit` / `porters`），若将来上游接受 WebGL 回退，两边可互补而非重复。
+- 上游 [`shader-effects-inc/shaders`](https://github.com/shader-effects-inc/shaders)（MIT）是 **WebGPU 效果库**。本项目从 v4.0.4 转译了 **48 个效果资产**（`ported`，逐条溯源见 `spec.json` 的 `provenance` 与 `THIRD_PARTY_NOTICES.md`），但**不包含其运行时**（TypeGPU、框架绑定、CLI、遥测），也不包含未被移植的效果源码；渲染管线、参数元数据与示例工程均为本项目实现。
 - `naga` 提供转换能力；`@typegpu/gl` 证明 WebGL 侧路径可行。
 - 首个真实使用者是一个原生 GLES 音乐可视化 App（分层：背景 → 主视效 → 歌词/播控），本项目从中沉淀可复用部分。
 
-## 7. 未决问题
+## 7. 决策与遗留
 
-1. 效果规格的版本化方式（`spec.md` 还是 `spec.json` + 生成文档）？
-2. 是否需要提供"参考图自动比对"脚本（同参数渲染 → 图像差异报告）？
-3. 能力报告的输出格式（人类可读 + 机器可读 JSON 双输出？）
-4. 是否同时提供 GLSL ES 1.00 降级路径（覆盖面更广，但表达力受限）？
+立项时的四个未决问题，现状如下：
+
+| # | 问题 | 结论 |
+|---|---|---|
+| 1 | 规格用 `spec.md` 还是 `spec.json` + 生成文档 | **已决**：`spec.json` 为唯一源（含 `resolved` 默认值与 `validation`）；`spec.md` 仅作可选的人类可读视图，v0.1 不提交 |
+| 2 | 是否提供参考图自动比对 | **已实现**：`tools/render-reference` 支持抓帧、`--strict` 与逐像素 diff；模拟器 48/48 通过 |
+| 3 | 能力报告的输出格式 | **遗留**：`capability-probe` 未实现，顺延到 1.x；当前以设备矩阵与运行时错误反馈代替 |
+| 4 | 是否提供 GLSL ES 1.00 降级 | **已决**：不提供，只支持 ES 3.00；理由见 §4 |

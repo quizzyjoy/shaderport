@@ -115,7 +115,7 @@ GitHub 组织层面的设置建议：组织 Settings → **Require two-factor au
 **内部命名规则**：
 
 - 效果目录用**功能描述名**（`mesh-gradient`、`contour-lines`），**不直接照搬上游组件名**（如 `MeshGradient`）；
-- 上游对应关系写进该效果的 `spec.md` 的「来源」字段；
+- 上游对应关系写进该效果的 `spec.json` 的「来源」字段；
 - 包名若将来拆分：`shaderport-core`、`shaderport-effects` —— 不得出现 `@shaderport/shaders` 这类擦边命名。
 
 ## 4. 溯源分类（Provenance classes）
@@ -132,7 +132,7 @@ GitHub 组织层面的设置建议：组织 Settings → **Require two-factor au
 
 ## 5. 落地机制（每个效果/每次 PR 都要满足）
 
-1. **`spec.md` 的「来源」字段必填**，格式：
+1. **`spec.json` 的「来源」字段必填**，格式：
    `ported` + `shader-effects-inc/shaders@v4.0.4 packages/core/src/shaders/MeshGradient/index.ts` + `MIT © 2026 Shader Effects Inc.`
 2. **移植文件的头部注释模板**：
    ```glsl
@@ -143,7 +143,7 @@ GitHub 组织层面的设置建议：组织 Settings → **Require two-factor au
    ```
 3. **`THIRD_PARTY_NOTICES.md` 汇总**：每次新增/更新移植来源，必须在同一 PR 内更新该文件（含上游 MIT 许可全文或稳定链接）。
 4. **评审闸门**（PR 模板勾选项）：
-   - [ ] 每个新效果的 `spec.md` 已声明来源类别
+   - [ ] 每个新效果的 `spec.json` 已声明来源类别
    - [ ] 若为 `ported`，文件头注释与 `THIRD_PARTY_NOTICES.md` 已更新
    - [ ] 项目名/包名/标识未使用上游品牌词
 
@@ -163,5 +163,5 @@ GitHub 组织层面的设置建议：组织 Settings → **Require two-factor au
 
 - [ ] README 增加"不隶属声明"（已加）
 - [ ] `THIRD_PARTY_NOTICES.md` 建立并填入上游 MIT 条目（已建）
-- [ ] PR 模板加入溯源勾选项（见 §5.4）
-- [ ] 首批效果落地时逐条填 `spec.md` 来源字段
+- [x] PR 模板加入溯源勾选项（见 §5.4）
+- [x] 48 个效果已逐条填写 `spec.json` 来源字段

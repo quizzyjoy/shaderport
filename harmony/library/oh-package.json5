@@ -1,7 +1,7 @@
 {
   "name": "@quizzyjoy/shaderport",
   "version": "0.1.0",
-  "description": "Portable GPU effects for OpenGL ES 3.0: WGSL to GLSL ES 3.00 converter and effect pack.",
+  "description": "48 portable GPU effects for HarmonyOS (OpenGL ES 3.0), with ArkTS parameter metadata and reference images.",
   "main": "Index.ets",
   "author": {
     "name": "河南趣知易解互联网科技有限公司",

@@ -1,6 +1,10 @@
 # shaderport 1.0 路线图
 
-> 状态：v1 · 2026-10-19 · 决策已冻结（§6），变更需走 PR。
+> 状态：v1 · 2026-10-20 · 决策已冻结（§6），变更需走 PR。
+>
+> 进度（2026-10-19）：**M0–M3 已完成**；M4 仅剩 `ohpm publish` 与发布后事项。
+> 实际节奏快于计划，0.1.0 已包含全部 48 个效果，M1–M3 的版本号仅作历史记录。
+> `capability-probe` 未实现，顺延到 1.x（当前以设备矩阵与运行时反馈替代）。
 
 ## 1. 目标
 
@@ -19,12 +23,12 @@
 
 | 维度 | 目标 |
 |---|---|
-| 效果 | **48 个**：24 生成器 + 12 滤镜/扭曲 + 6 形状 + 6 材质（Shape Effects） |
-| 工具 | `export-wgsl` / `wgsl2glsles` / `glsl-gate` / `sync-effects` / `capability-probe` |
-| ArkTS API | `init` / `listEffects` / `getEffect` / `getShaderSource` / `validateParams` |
-| 示例 | `harmony/entry`：效果画廊 + spec 驱动参数面板 + 能力探测 + 参考图对比 |
+| 效果 | **48 个**：生成器/纹理 19 + 形状 10 + 调色 10 + 扭曲 5 + 风格化 2 + 模糊 1 + 交互 1 |
+| 工具 | `export-wgsl` / `wgsl2glsles` / `glsl-gate` / `sync-effects` / `render-reference`（`capability-probe` 顺延 1.x） |
+| ArkTS API | `init` / `listEffects` / `getEffect` / `getShaderSource` / `getDefaultParams` / `getParamDescriptors` / `encodeParam` / `validateParams` |
+| 示例 | `harmony/entry`：效果列表 + spec 驱动参数面板 + 指针 + 抓帧 + 性能统计 |
 | 平台 | phone + tablet，arm64-v8a，GLES 3.0 |
-| 发布 | ohpm `@quizzyjoy/shaderport@1.0.0`；`examples/gles-cpp` 由 `harmony/entry` 生成 |
+| 发布 | ohpm `@quizzyjoy/shaderport@1.0.0`；`examples/gles-cpp` 由 `harmony/entry` 生成（1.x） |
 
 ## 4. 里程碑
 
@@ -34,11 +38,11 @@
 |---|---|---|---|---|
 | M0 工具链 | — | 第 1 周 | `export-wgsl` + `wgsl2glsles` + `glsl-gate` | 一条命令产出可复现的 WGSL/GLSL 与报告 |
 | M1 最小闭环 | 0.1.0 | 第 1–3 周 | 6 个生成器 + demo 渲染 + HAR 装资产 | 真机 1080p ≥30fps；`ohpm prepublish` 无 ERROR |
-| M2 合成链路 | 0.2.0 | 第 3–6 周 | 累计 12 个（含 warp/filter）+ RTT + capability-probe | 多 pass 跑通；浮点 FBO 缺失可降级并提示 |
+| M2 合成链路 | 0.2.0 | 第 3–6 周 | 累计 12 个（含 warp/filter）+ RTT + capability-probe（顺延 1.x） | 多 pass 跑通；浮点 FBO 缺失可降级（1.x） |
 | M3 画廊化 | 0.5.0-beta | 第 6–10 周 | 累计 30 个 + 画廊 + 参考图 diff CI | 列表点到渲染 ≤3 次交互；CI 全绿 |
 | M4 1.0 | 1.0.0 | 第 10–14 周 | 累计 48 个 + 设备矩阵 + 文档 + 发布 | 下方 DoD 全满足 |
 
-## 5. 首批效果（12 个，三波）
+## 5. 效果清单（48 个，分批落地）
 
 | 波次 | 效果 | role | 目的 |
 |---|---|---|---|
@@ -71,15 +75,11 @@
 | 7 | `DotGrid` / `SineWave` | generator | 默认尺寸/线宽填满画布（纯白，属预期） |
 | 7 | `Spiral` | generator | 动画螺旋 |
 
-备选：`Vignette`、`Glow`。
-
 **当前状态**：**48 个效果全部通过设备像素验证 —— 1.0 的效果数量目标已达成**。`Chrome`、`Neon` 暂缓：静态导出有 14 个 uniform 缺默认值，且效果依赖 shape/child alpha 的遮罩语义。
 >
-> 验证方式提示：自动轮播覆盖 41 个效果需约 74 s，模拟器会因熄屏中断；批量验证前需 `power-shell wakeup` + `setmode 602`，或改成手动/分段抓取。
+> 验证方式提示：全量自动抓帧约需 2 分钟，模拟器会因熄屏中断；批量验证前需 `power-shell wakeup` + `setmode 602`，或改成手动/分段抓取。
 
-**首批状态**：17 个全部通过设备像素验证（`Aurora` 之前的 alpha 差异确认是输入值不一致，不是 EGL 预乘问题；统一使用 `spec.resolved` 后 max ≤ 1）。
-
-**交互与窗口**：touch / hover / mouse 已归一化为 `uPointer` 并送到 native；覆盖层使用 `HitTestMode.Transparent`，XComponent 仍能收到事件。折叠屏展开/折叠实测触发 `resize 2224×2288 ↔ 1080×2296`，RTT 纹理自动重建，2-pass 效果（Glow）在两种尺寸下均正常渲染。
+**交互与窗口**：touch / hover / mouse 已归一化为 `_sys.pointer` 并送到 native；覆盖层使用 `HitTestMode.Transparent`，XComponent 仍能收到事件。折叠屏展开/折叠实测触发 `resize 2224×2288 ↔ 1080×2296`，RTT 纹理自动重建，2-pass 效果（Glow）在两种尺寸下均正常渲染。
 
 **示例工程**：48 个效果的横向列表 + 由 `spec.props[].ui` 自动生成的参数面板（`range` / `color` / `select` / `position` / `boolean`），参数改动即时写入 native UBO；自动轮播已移除，改为手动切换 + `Capture` 按钮按需抓帧。
 
@@ -111,7 +111,7 @@
 
 ## 8. 单个效果的 DoD
 
-1. `effects/<id>/{spec.json, shader.glsl, reference.png}` 齐全
+1. `effects/<id>/{spec.json, passes/*.glsl, reference.png}` 齐全
 2. `spec.json` 含 `provenance`（`original` / `ported` / `inspired`）与上游 `repo@version` + 路径
 3. `shader.glsl` 头部保留 MIT 版权声明；`THIRD_PARTY_NOTICES.md` 同步
 4. `glsl-gate` 编译 + 链接通过
@@ -126,7 +126,7 @@
 
 | 风险 | 处理 |
 |---|---|
-| GLES 3.0 无 guarantee 的浮点渲染目标 | capability-probe 检查 `EXT_color_buffer_float`；缺失时降级到 8-bit 或半分辨率 |
+| GLES 3.0 无 guarantee 的浮点渲染目标 | 1.x 的 capability-probe 检查 `EXT_color_buffer_float`；缺失时降级到 8-bit 或半分辨率 |
 | 观感偏差（Y 翻转 / sRGB 二次编码 / premultiply alpha / highp 退化） | 参考图 diff 作为门禁；四个已知点写成 checklist |
 | `Blur` 等 filter 在 map driver 下走 compute | spec 只暴露标量/颜色参数，不暴露 map driver |
 | Shape Effects ALU 重（中位 369 行，最大 823） | 半分辨率 RTT + 降 octave；1.0 只取 6 个并全部实测帧率 |

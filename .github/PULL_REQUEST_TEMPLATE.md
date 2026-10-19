@@ -17,7 +17,7 @@
 
 ## 溯源自检（**必勾**）
 
-- [ ] 每个新/改效果的 `spec.md` 已填写「来源」类别（`original` / `ported` / `inspired`）
+- [ ] 每个新/改效果的 `spec.json` 已填写「来源」类别（`original` / `ported` / `inspired`）
 - [ ] 若为 **`ported`**：文件头已加版权与许可注释（含上游 `repo@版本` 与文件路径），且已更新 `THIRD_PARTY_NOTICES.md`
 - [ ] 若为 **`inspired`**：已注明来源并写明"未包含其代码"
 - [ ] 项目名 / 包名 / 标识**未使用**上游品牌词（`shaders`、`shader-effects`、`Shader Effects`）
@@ -26,7 +26,7 @@
 
 - [ ] 已附**参考图或录屏**（同参数、同分辨率、与 `reference.png` 可对比）
 - [ ] 已注明**验证机型/GPU 与实测帧率**
-- [ ] `spec.md` 的成本档（pass 数、填充率、是否需浮点渲染目标）已更新
+- [ ] `spec.json` 的成本档（pass 数、填充率、是否需浮点渲染目标）已更新
 - [ ] 未使用 GLES 3.0 不存在的能力（`@compute`、storage texture 等）
 
 ## 检查清单

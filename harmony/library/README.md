@@ -1,234 +1,151 @@
-# shaderport
+# @quizzyjoy/shaderport
 
-> **Portable GPU effects for OpenGL ES 3.0** — 48 个可在 GLES 3.0 运行的效果资产，附规格、参考图与离线 WGSL → GLSL ES 3.00 工具链。
+开源的 HarmonyOS **GPU 效果资产包**：48 个从 shaders.com（`shader-effects-inc/shaders`，MIT,
+v4.0.4）移植的 GLSL ES 3.00 效果，附带可校验的 ArkTS 参数元数据。渲染由宿主应用负责，
+本包提供 shader、默认值、参数约束与参考图。
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/quizzyjoy/shaderport/blob/main/LICENSE)
-![Status](https://img.shields.io/badge/status-0.1.0%20beta%20%C2%B7%2048%20effects-blue)
-![GLES](https://img.shields.io/badge/OpenGL%20ES-3.0-green)
-![HarmonyOS](https://img.shields.io/badge/HarmonyOS-API%2012%2B-orange)
+- 效果数：**48**
+- 渲染语言：**GLSL ES 3.00**（`#version 300 es`）
+- 包类型：HAR（`@quizzyjoy/shaderport@0.1.0`）
+- 许可：**Apache-2.0**（上游效果资产为 MIT，见 [THIRD_PARTY_NOTICES](https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md)）
 
-> **主仓（source of truth）**：[GitHub `quizzyjoy/shaderport`](https://github.com/quizzyjoy/shaderport)。
-> GitCode / Gitee 上的同名仓库为**只读镜像**；**issue 与 PR 请提交到 GitHub**。
-> 本 README 同时作为 **ohpm 包页面**展示，所有外链均为绝对地址。
-
-## 简介
-
-现代着色器效果生态正在向 **WebGPU/WGSL** 收敛，但真实设备的可用面要窄得多：
-
-- HarmonyOS **ArkWeb** 实测：`navigator.gpu` 存在，**`requestAdapter()` 返回 null** → WebGPU 效果完全不可用；
-- 原生 App（HarmonyOS / Android / iOS）**根本没有 WebGPU**，只有 OpenGL ES / Metal / Vulkan；
-- 大量旧 WebView 与中低端设备只有 **GLES 3.0**。
-
-`shaderport` 把上游 WebGPU 效果库（MIT）的资产转成 **GLSL ES 3.00**，以"**源码 + 规格 + 参考图**"交付，并提供离线转换工具链。它**不是** WebGPU 运行时，也**不包含渲染器**——渲染由宿主 App 的 native 层完成。
-
-- **48 个效果**：生成器 / 形状 / warp / filter / 调整
-- **每个效果三件套**：`spec.json`（最终 uniform 值 + 参数 UI）、`passes/*.glsl`、`reference.png`
-- **多 pass**：RTT ping-pong（Blur / Glow / CursorRipples）
-- **可验证**：模拟器 48/48 逐像素通过；真机差异有记录（见设备矩阵）
-
-## 环境要求
-
-| 项 | 要求 |
-|---|---|
-| HarmonyOS | **API 12+**（compatibleSdkVersion 5.0.0(12)） |
-| 图形 | **OpenGL ES 3.0**（`#version 300 es`）；不支持 compute |
-| ABI | arm64-v8a |
-| 宿主 | 必须提供 native 渲染器（XComponent + EGL/GLES）；**ArkTS 不能直接执行 GLES** |
-| 权限 | 无（只读取随包分发的 rawfile） |
-
-## 安装
-
-> **状态**：0.1.0 已实现并在 HarmonyOS 模拟器完成 48 个效果验证，**尚未发布到 ohpm**。
+## 下载安装
 
 ```bash
-# 发布后
 ohpm install @quizzyjoy/shaderport
-
-# 本地开发（HAR 源码）
-# entry/oh-package.json5:
-#   "@quizzyjoy/shaderport": "file:../library"
 ```
 
-## 快速开始（ArkTS 侧）
+## 所需权限
+
+**无。** 本包只读取自身 `rawfile/effects/` 下的着色器、规格与参考图，
+不申请系统权限、不访问网络、不写沙箱。
+
+## 使用示例
 
 ```ts
 import {
-  initShaderPort, listEffects, getEffect, getPassSources,
-  getDefaultParams, getParamDescriptors, encodeParam,
-} from '@quizzyjoy/shaderport'
+  initShaderPort,
+  listEffects,
+  getEffect,
+  getPassSources,
+  getDefaultParams,
+  encodeParam,
+} from '@quizzyjoy/shaderport';
 
-// 1) 绑定宿主资源管理器（HAR 的 rawfile 会合并进宿主资源包）
-initShaderPort(getContext(this).resourceManager)
+// 1. 初始化（通常在页面 aboutToAppear 中调用一次）
+initShaderPort(getContext(this).resourceManager);
 
-// 2) 列效果 / 取规格
-const effects = listEffects()
-const spec = getEffect('plasma')
+// 2. 选择效果
+const effects = listEffects();                 // EffectSummary[]
+const spec = getEffect('plasma');              // 完整 EffectSpec
 
-// 3) 取所有 pass 的 GLSL 与 UBO 绑定（最后一项是 final）
-const passes = getPassSources('plasma')
-// [{ fragment, block, instance }, ...]
+// 3. 取 pass 与默认值，交给宿主 native 渲染器
+const passes = getPassSources('plasma');       // [{ fragment, block, instance }]
+const defaults = getDefaultParams('plasma');   // [{ name: 'n_n.lightness', values: [...] }]
 
-// 4) 取最终 uniform 值，交给 native 打包
-const values = getDefaultParams('plasma')
-// [{ name: 'n_n.colorA', values: [...] }, ...]
-
-// 5) 参数面板
-const controls = getParamDescriptors('plasma')
-const encoded = encodeParam('plasma', 'intensity', 2.0)
-nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
+// 4. 用户改参数时编码为 UBO 路径 + 数值
+const param = encodeParam('plasma', 'lightness', 0.5); // { name: 'n_n.lightness', values: [0.5] }
 ```
 
-> 📘 **完整端到端教程**（含 native 渲染器骨架、UBO 打包、多 pass、抓帧校验、FAQ）：
-> **[使用教程 · docs/usage-guide.md](https://github.com/quizzyjoy/shaderport/blob/main/docs/usage-guide.md)**
+宿主 native 渲染器需要：
 
-## 渲染契约（native 侧必须做什么）
+1. 创建 `XComponent` surface → `eglCreateWindowSurface` → `eglMakeCurrent`；
+2. 为每个 pass 编译 `fragment` 源码，并链接宿主提供的全屏顶点着色器
+   （`#version 300 es`，varying 统一命名 `_vs2fs_location0`）；
+3. 按 `block` / `instance` 绑定 UBO，写入 `getDefaultParams()` 与 `encodeParam()` 的结果；
+4. 多 pass 时在 pass 之间用 FBO 做 ping-pong，最后一个 pass 输出到窗口；
+5. 每帧更新 `u_time` 等内置 uniform 与用户参数。
 
-宿主需要自己实现一个 GLES 3.0 渲染器。最小骨架见
-[`harmony/entry/src/main/cpp`](https://github.com/quizzyjoy/shaderport/tree/main/harmony/entry/src/main/cpp)（约 700 行）。
+完整渲染契约（uniform 布局、Y 轴方向、sRGB、alpha、多 pass 规则）：
 
-| 事项 | 约定 |
+https://github.com/quizzyjoy/shaderport/blob/main/README.md#渲染契约
+
+## 接口说明
+
+| 接口 | 说明 |
 |---|---|
-| 顶点阶段 | 宿主提供全屏 VS，varying 名 **`_vs2fs_location0`**；片元只含 `@fragment` 入口 |
-| pass 顺序 | `spec.passes` 按 `index` 升序；**最后一项绘制到屏幕**，其余进 RTT |
-| UBO | 块名 `combined_block_0Fragment`，绑定 point 0；成员路径 `n_n.*` / `n_base.*` |
-| 参数 | `getDefaultParams` 返回的是**最终值**（P3-linear 颜色、Y 翻转位置、枚举码、色标数组） |
-| 数组 | 用 `GL_UNIFORM_ARRAY_STRIDE` 按元素写入（vec3 数组有 16 字节 padding） |
-| 颜色 | **不要**再做 sRGB→linear；final pass 已经带 sRGB OETF，**不要**再次编码 |
-| alpha | 中间 RTT 为 premultiplied；final 前按 shader 的 `unpremultiplyAlpha` 处理 |
-| 运行时 uniform | `_sys.*`（time/viewport/aspect/pointer）、`_animTime`、`_opacity` 由宿主填 |
-| 指针 | `_sys.pointer` 为归一化 `[0,1]`，**y 从顶部起算** |
-| 缩放 | 可整条链渲染到低分辨率 FBO 再上采样（示例提供 1x/0.75x/0.5x） |
+| `initShaderPort(rm)` | 绑定 `resourceManager`；之后才可读取效果，重复调用幂等 |
+| `listEffects()` | 返回 `EffectSummary[]`（来自 `index.json`） |
+| `getEffect(id)` | 返回完整 `EffectSpec`（`passes` / `ubo` / `props` / `defaults` / `resolved`）；未知 id 抛错 |
+| `getShaderSource(id, stage)` | 返回 final pass 的片元源码；`stage` 取 `'fragment'` 或 `''` |
+| `getPassSources(id)` | 按渲染顺序返回 `PassSource[]`：`{ fragment, block, instance }` |
+| `getDefaultParams(id)` | 返回 `ParamValue[]`：`{ name, values }`，已应用 `spec.resolved` |
+| `getParamDescriptors(id)` | 返回 `ParamDescriptor[]`：`name` / `path` / `kind` / `label` / `min` / `max` / `step` / `value` / `options` / `optionValues` |
+| `encodeParam(id, name, value)` | 将单个参数编码为 `{ name, values }`（颜色转线性、位置翻转 Y、枚举转码） |
+| `validateParams(id, params)` | 返回 `{ ok, errors }`；检查未知参数与 `NaN` |
 
-## API 参考
+参数路径使用点号：`n_base.color`、`n_n.lightness`。颜色为线性 P3；
+位置为 0..1 且 Y 轴向下（与 WGSL 一致）。
 
-| 接口 | 说明 | 返回 |
-|---|---|---|
-| `initShaderPort(resourceManager)` | 绑定宿主资源管理器 | `void` |
-| `listEffects()` | 列出全部效果 | `EffectSummary[]` |
-| `getEffect(id)` | 取完整规格 | `EffectSpec` |
-| `getShaderSource(id, 'fragment')` | 取 final pass 的 GLSL | `string` |
-| `getPassSources(id)` | 取所有 pass 的源码 + UBO 绑定 | `PassSource[]` |
-| `getDefaultParams(id)` | 取最终 uniform 值（含组合基底） | `ParamValue[]` |
-| `getParamDescriptors(id)` | 参数面板描述符（range/color/select/position/boolean） | `ParamDescriptor[]` |
-| `encodeParam(id, name, value)` | UI 值 → UBO 路径 + 数值 | `ParamValue` |
-| `validateParams(id, params)` | 参数校验 | `{ ok, errors }` |
+## 约束与限制
 
-完整字段说明见 [spec 格式](https://github.com/quizzyjoy/shaderport/blob/main/docs/spec-format.md)。
-
-## 包内容
-
-```
-@quizzyjoy/shaderport (HAR)
-├── Index.ets                     导出 9 个 API + 12 个类型
-├── src/main/ets/                 api.ets / types.ets（纯逻辑，无 .so）
-└── src/main/resources/rawfile/
-    └── effects/<id>/
-        ├── spec.json             规格 + 最终 uniform + 参数 UI + 溯源
-        ├── passes/*.glsl         GLSL ES 3.00（按 index 顺序）
-        └── reference.png         参考图（与 demo 抓帧逐像素对比）
-```
-
-> 体积以实际 HAR 为准（48 个效果含参考图）；参考图仅用于验证，不参与渲染。
-
-## 效果目录（48）
-
-| 类别 | 数量 | 代表 |
-|---|---|---|
-| Textures | 19 | Plasma、Marble、Aurora、MeshGradient、FlowingGradient、Perlin/Simplex/BlockNoise、Checkerboard、Spiral |
-| Shapes | 10 | Circle、RoundedRect、Polygon、Ring、Star、Ellipse、Heart、Teardrop、Arc、Cross |
-| Adjustments | 10 | BrightnessContrast、Duotone、HueShift、Exposure、Grayscale、Invert、Posterize、Saturation、Tint、Tritone |
-| Distortions | 5 | Twirl、Flip、Mirror、PolarCoordinates、RectangularCoordinates |
-| Stylize | 2 | Vignette、Glow |
-| Blurs | 1 | Blur（2 pass RTT） |
-| Interactive | 1 | CursorRipples（指针驱动，2 pass） |
-
-> 形状类默认 `radius=1` 填满画布（参考图为纯白，属预期）；调整类部分默认参数为恒等变换。
-
-## 性能
-
-Mate 80（1280×2598）实测，完整表见
-[设备矩阵](https://github.com/quizzyjoy/shaderport/blob/main/docs/device-matrix.md)：
-
-- 纯色 / 轻渐变：**120 fps**
-- Plasma / PerlinNoise / Aurora：**~60 fps**
-- Blur / Glow（2 pass）：**56–58 fps**
-- FlowingGradient：**54 fps**（`cost: medium`）
-- MeshGradient：**11.8 fps**（`cost: high`，建议半分辨率或 `Scale` 档位）
-
-`Scale` 档位：`1x / 0.75x / 0.5x`，整条链低分辨率渲染后线性上采样。
-
-## 已知限制
-
-- `Chrome` / `Neon` 依赖 shape/child alpha，暂不收录；
-- 有状态模拟类（Smoke / ReactionDiffusion / Boids）需要跨帧状态，暂不收录；
-- `meshAnchors` 在导出时按 1:1 aspect 烘焙，非 1:1 下跨端一致但与上游"每帧按实际 aspect 重算"略有差异；
-- 真机（Maleoon GPU）与参考渲染器存在驱动精度差异（纯色 ~7/255），属 GPU 精度而非管线错误。
-
-## 常见问题（FAQ）
-
-| 问题 | 处理 |
-|---|---|
-| 整图发灰 | 做了两次 sRGB 编码——final pass 自带 OETF，去掉你的 gamma；RTT 中间纹理用 `RGBA16F` |
-| 黑屏且无报错 | 查 `glGetShaderInfoLog` / `glGetProgramInfoLog`；确认 final 是最后一个 pass |
-| 参数无效 | 必须用 `encodeParam` 返回的 `name`（`n_n.*`），不要自己拼 |
-| 数组参数错位 | 用 `GL_UNIFORM_ARRAY_STRIDE`（`vec3[]` 每元素 16 字节） |
-| 折叠屏/旋转后拉伸 | `onAreaChange` 的 resize 要传到 native；Scale 档位下不要改 viewport |
-| 想先跑通再集成 | 直接用 [示例工程](https://github.com/quizzyjoy/shaderport/tree/main/harmony) |
-
-## 文档
-
-| 文档 | 内容 |
-|---|---|
-| [使用教程](https://github.com/quizzyjoy/shaderport/blob/main/docs/usage-guide.md) | **从零接入**：安装 → native 渲染器 → 参数面板 → 抓帧校验 → FAQ |
-| [效果规格格式](https://github.com/quizzyjoy/shaderport/blob/main/docs/spec-format.md) | `spec.json` 全字段（props / passes / resolved / validation / provenance） |
-| [转换与验证指南](https://github.com/quizzyjoy/shaderport/blob/main/docs/conversion-guide.md) | WGSL → GLSL ES 3.00 的导出、转换、门禁、漂移检查 |
-| [设备矩阵](https://github.com/quizzyjoy/shaderport/blob/main/docs/device-matrix.md) | 真机机型 / GPU / 帧率 / 精度差异 |
-| [示例工程](https://github.com/quizzyjoy/shaderport/blob/main/harmony) | DevEco 工程：`entry` demo + `library` HAR，含真机截图 |
-| [示例工程 README](https://github.com/quizzyjoy/shaderport/blob/main/harmony/entry/README.md) | demo 使用教程与 native 结构 |
-| [签名与凭据管理](https://github.com/quizzyjoy/shaderport/blob/main/docs/signing.md) | 本地签名不入库的约定 |
-| [1.0 路线图](https://github.com/quizzyjoy/shaderport/blob/main/docs/roadmap-1.0.md) | 后续效果与能力规划 |
-| [溯源与命名政策](https://github.com/quizzyjoy/shaderport/blob/main/docs/provenance-and-naming.md) | 与上游关系、三分法、禁用表述 |
+- **API 12+**（`compatibleSdkVersion 5.0.0(12)`），`arm64-v8a`。
+- **GLES 3.0**；不支持 compute shader，也不提供 `#version 100` 回退。
+- ArkTS 不能直接调用 GLES：必须由宿主用 XComponent + NAPI + native `.so` 渲染。
+- 本包只提供资产与元数据，**不含渲染器**；不负责 EGL 配置、FBO 分配与帧循环。
+- 不含需要 shape/child alpha 的 `Chrome`、`Neon`；不含状态模拟类效果。
+- `MeshGradient` 为 `cost: high`，全分辨率可能掉帧，建议降分辨率或 `renderScale`。
 
 ## 目录结构
 
 ```
 shaderport/
-├── effects/                 效果包（spec + passes + reference）
-├── tools/                   export / naga / gate / sync / render-reference
-├── harmony/                 DevEco 工程（library HAR + entry demo）
-│   ├── library/             ★ 本包（@quizzyjoy/shaderport）
-│   ├── entry/               示例 App（含 native 渲染器）
-│   └── docs/screenshots/    真机截图
-├── docs/                    规格、教程、指南、设备矩阵、路线图
-├── .github/workflows/       Node 侧 CI（导出/转换/门禁/漂移检查）
-├── LICENSE / NOTICE / THIRD_PARTY_NOTICES.md
-└── README.md / CHANGELOG.md / CONTRIBUTING.md
+├── Index.ets                  # ArkTS 出口
+└── src/main/
+    ├── ets/
+    │   ├── api.ets            # 公开 API
+    │   └── types.ets          # 类型定义
+    └── resources/rawfile/
+        └── effects/
+            ├── index.json     # 效果索引
+            └── <id>/
+                ├── spec.json      # 规格 + resolved 默认值 + 参数
+                ├── passes/
+                │   ├── final.glsl     # 单 pass；多 pass 另有 rtt_*.glsl
+                │   └── …
+                └── reference.png  # 512×512 参考图（P3 → sRGB 编码）
 ```
 
-## 版本与变更
+## 效果与性能
 
-- 当前版本：**0.1.0**（48 效果 · API 冻结候选）
-- 变更记录：[CHANGELOG.md](https://github.com/quizzyjoy/shaderport/blob/main/harmony/library/CHANGELOG.md)
-- 语义化版本：`0.x` 阶段接口可能微调，`1.0` 起承诺向后兼容。
+48 个效果按类别分为：纹理/生成器 19、形状 10、调色 10、扭曲 5、
+风格化 2、模糊 1、交互 1。默认参数下的实测帧率（Mate 80 / Maleoon GPU）：
 
-## 与上游的关系
+| 效果 | fps | 效果 | fps |
+|---|---:|---|---:|
+| SolidColor | 120.5 | Plasma | 60.2 |
+| LinearGradient | 109.1 | PerlinNoise | 60.8 |
+| RadialGradient | 120.5 | Blur | 57.6 |
+| Aurora | 60.2 | Glow | 56.8 |
+| FlowingGradient | 54.2 | MeshGradient | 11.8 |
 
-> 本项目是完全独立的第三方项目，不是 `shader-effects-inc/shaders` 的官方移植、不是其 fork，也未获其背书。
->
-> 48 个效果由上游 WGSL 自动转译为 GLSL ES 3.00（`ported`），每个文件保留 MIT 声明；逐条来源见 `spec.json` 的 `provenance` 与
-> [THIRD_PARTY_NOTICES.md](https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md)。
+`renderScale` 支持 `1.0 / 0.75 / 0.5`，对填充率受限效果（MeshGradient）收益明显。
 
-## 主体与联系
+完整设备矩阵：https://github.com/quizzyjoy/shaderport/blob/main/docs/device-matrix.md
 
-河南趣知易解互联网科技有限公司（品牌 **QuizzyJoy**，一人公司 OPC）创建与维护。
+## 文档
 
-| 用途 | 联系 |
+| 文档 | 链接 |
 |---|---|
-| 安全问题（请勿公开 issue） | security@quizzyjoy.com |
-| 一般咨询 / 合作 / 行为准则 | opensource@quizzyjoy.com |
-| 官网 | https://quizzyjoy.com |
+| 使用教程（从零接入） | https://github.com/quizzyjoy/shaderport/blob/main/docs/usage-guide.md |
+| 规格格式 | https://github.com/quizzyjoy/shaderport/blob/main/docs/spec-format.md |
+| 转换指南 | https://github.com/quizzyjoy/shaderport/blob/main/docs/conversion-guide.md |
+| 设备矩阵 | https://github.com/quizzyjoy/shaderport/blob/main/docs/device-matrix.md |
+| 签名策略 | https://github.com/quizzyjoy/shaderport/blob/main/docs/signing.md |
+| 来源与命名 | https://github.com/quizzyjoy/shaderport/blob/main/docs/provenance-and-naming.md |
+| 第三方声明 | https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md |
+
+## 贡献
+
+问题反馈与 PR：https://github.com/quizzyjoy/shaderport
+
+- 新增/修改效果走 `tools/` 流水线，不要手改 `effects/` 生成产物；
+- 提交前运行 `npm run export` → `npm run convert` → `npm run gate` → `npm run sync`；
+- 详细规范见 https://github.com/quizzyjoy/shaderport/blob/main/CONTRIBUTING.md
 
 ## 开源协议
 
-[Apache-2.0](https://github.com/quizzyjoy/shaderport/blob/main/LICENSE) © 2026 河南趣知易解互联网科技有限公司（QuizzyJoy）
-第三方内容按其原许可使用，详见 [THIRD_PARTY_NOTICES.md](https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md)。
+本包以 **Apache-2.0** 发布，见 `LICENSE`。
+效果资产转译自 `shader-effects-inc/shaders`（MIT, v4.0.4），
+许可与归属见
+[THIRD_PARTY_NOTICES](https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md)。
