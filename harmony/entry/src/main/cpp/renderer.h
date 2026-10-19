@@ -43,6 +43,7 @@ public:
     void SetParam(const std::string &name, const std::vector<float> &values);
     void SetPointer(float x, float y, float active);
     void SetFixedTime(double time, bool fixed);
+    void SetPaused(bool paused);
     void RequestCapture(const std::string &path);
     bool CaptureReady() const { return captureReady_.load(); }
     void Resize(int width, int height);
@@ -104,6 +105,8 @@ private:
 
     bool useFixedTime_ = false;
     double fixedTime_ = 0.0;
+    bool paused_ = false;
+    double pausedTime_ = 0.0;
     std::string capturePath_;
     bool captureRequested_ = false;
     std::atomic<bool> captureReady_{false};

@@ -8,6 +8,7 @@ import {
   nativeResize,
   nativeSetEffect,
   nativeSetParam,
+  nativeSetPaused,
   nativeSetPointer,
 } from 'libentry.so';
 import {
@@ -28,10 +29,12 @@ import {
 struct Index {
   private controller: XComponentController = new XComponentController();
   @State status: string = 'booting';
+  @State info: string = '';
   @State effects: EffectSummary[] = [];
   @State current: string = '';
   @State params: ParamDescriptor[] = [];
   @State stats: string = '';
+  @State paused: boolean = false;
   private started: boolean = false;
   private filesDir: string = '';
   private statsTimer: number = -1;
@@ -77,10 +80,52 @@ struct Index {
       }
       this.current = id;
       this.params = getParamDescriptors(id);
-      this.status = `${id} · ${sources.length}p · ${values.length} params`;
+      this.paused = false;
+      nativeSetPaused(false);
+
+      const summary: EffectSummary | undefined = this.effects.find((item: EffectSummary) => item.id === id);
+      if (summary !== undefined) {
+        this.info = `${summary.category} · ${summary.layer} · ${summary.cost} · ${summary.passes}p`;
+        this.status = `${summary.name} · ${values.length} params`;
+      } else {
+        this.status = `${id} · ${values.length} params`;
+      }
     } catch (error) {
       this.status = `error: ${error}`;
     }
+  }
+
+  private step(delta: number): void {
+    if (this.effects.length === 0) {
+      return;
+    }
+    const index: number = this.effectIndex();
+    const next: number = (index + delta + this.effects.length) % this.effects.length;
+    this.select(this.effects[next].id);
+  }
+
+  private effectIndex(): number {
+    for (let i = 0; i < this.effects.length; i++) {
+      if (this.effects[i].id === this.current) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  private effectName(): string {
+    if (this.effects.length === 0) {
+      return '';
+    }
+    return this.effects[this.effectIndex()].name;
+  }
+
+  private makeEffectOptions(): SelectOption[] {
+    const out: SelectOption[] = [];
+    for (let i = 0; i < this.effects.length; i++) {
+      out.push({ value: this.effects[i].name });
+    }
+    return out;
   }
 
   private updateParam(index: number, value: ESObject): void {
@@ -93,6 +138,24 @@ struct Index {
     } catch (error) {
       this.status = `error: ${error}`;
     }
+  }
+
+  private resetParams(): void {
+    try {
+      const values: ParamValue[] = getDefaultParams(this.current);
+      for (let i = 0; i < values.length; i++) {
+        nativeSetParam(values[i].name, values[i].values);
+      }
+      this.params = getParamDescriptors(this.current);
+      this.status = `${this.effectName()} · defaults restored`;
+    } catch (error) {
+      this.status = `error: ${error}`;
+    }
+  }
+
+  private togglePause(): void {
+    this.paused = !this.paused;
+    nativeSetPaused(this.paused);
   }
 
   private capture(): void {
@@ -122,14 +185,6 @@ struct Index {
     const nx: number = Math.max(0, Math.min(1, x / this.viewWidth));
     const ny: number = Math.max(0, Math.min(1, y / this.viewHeight));
     nativeSetPointer(nx, ny, active);
-  }
-
-  private makeOptions(labels: string[]): SelectOption[] {
-    const out: SelectOption[] = [];
-    for (let i = 0; i < labels.length; i++) {
-      out.push({ value: labels[i] });
-    }
-    return out;
   }
 
   private start(surfaceId: string): void {
@@ -230,6 +285,14 @@ struct Index {
     }
   }
 
+  private makeOptions(labels: string[]): SelectOption[] {
+    const out: SelectOption[] = [];
+    for (let i = 0; i < labels.length; i++) {
+      out.push({ value: labels[i] });
+    }
+    return out;
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       XComponent({
@@ -269,33 +332,41 @@ struct Index {
         .height('100%')
 
       Column() {
-        Row({ space: 12 }) {
-          Text(this.status)
-            .fontSize(13)
-            .fontColor(Color.White)
-          Text(this.stats)
-            .fontSize(12)
-            .fontColor('#CCFFFFFF')
+        Row({ space: 10 }) {
+          Text(this.status).fontSize(13).fontColor(Color.White).layoutWeight(1)
+          Text(this.stats).fontSize(12).fontColor('#CCFFFFFF')
         }
-        .padding({ left: 12, right: 12, top: 8, bottom: 4 })
+        .padding({ left: 12, right: 12, top: 8, bottom: 2 })
+
+        Text(this.info)
+          .fontSize(11)
+          .fontColor('#AAFFFFFF')
+          .padding({ left: 12, right: 12, bottom: 6 })
 
         Blank()
 
         Column({ space: 4 }) {
-          Scroll() {
-            Row({ space: 6 }) {
-              ForEach(this.effects, (item: EffectSummary) => {
-                Button(item.name)
-                  .fontSize(11)
-                  .height(30)
-                  .padding({ left: 10, right: 10 })
-                  .backgroundColor(this.current === item.id ? '#5b18ca' : '#33FFFFFF')
-                  .onClick(() => this.select(item.id))
-              }, (item: EffectSummary) => item.id)
-            }
+          Row({ space: 6 }) {
+            Button('‹')
+              .fontSize(16)
+              .width(36)
+              .height(32)
+              .backgroundColor('#33FFFFFF')
+              .onClick(() => this.step(-1))
+
+            Select(this.makeEffectOptions())
+              .selected(this.effectIndex())
+              .value(this.effectName())
+              .layoutWeight(1)
+              .onSelect((index: number) => this.select(this.effects[index].id))
+
+            Button('›')
+              .fontSize(16)
+              .width(36)
+              .height(32)
+              .backgroundColor('#33FFFFFF')
+              .onClick(() => this.step(1))
           }
-          .scrollable(ScrollDirection.Horizontal)
-          .scrollBar(BarState.Off)
           .width('100%')
 
           Scroll() {
@@ -307,11 +378,21 @@ struct Index {
             .width('100%')
             .alignItems(HorizontalAlign.Start)
           }
-          .height(140)
+          .height(160)
           .width('100%')
           .scrollBar(BarState.Auto)
 
           Row({ space: 8 }) {
+            Button('Reset')
+              .fontSize(11)
+              .height(28)
+              .backgroundColor('#33FFFFFF')
+              .onClick(() => this.resetParams())
+            Button(this.paused ? 'Play' : 'Pause')
+              .fontSize(11)
+              .height(28)
+              .backgroundColor('#33FFFFFF')
+              .onClick(() => this.togglePause())
             Button('Capture')
               .fontSize(11)
               .height(28)
@@ -325,7 +406,7 @@ struct Index {
         }
         .width('100%')
         .padding({ left: 12, right: 12, bottom: 10, top: 6 })
-        .backgroundColor('#B3000000')
+        .backgroundColor('#CC000000')
       }
       .width('100%')
       .height('100%')

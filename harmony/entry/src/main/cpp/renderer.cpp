@@ -186,6 +186,11 @@ void EffectRenderer::SetFixedTime(double time, bool fixed) {
     useFixedTime_ = fixed;
 }
 
+void EffectRenderer::SetPaused(bool paused) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    paused_ = paused;
+}
+
 void EffectRenderer::RequestCapture(const std::string &path) {
     std::lock_guard<std::mutex> lock(mutex_);
     capturePath_ = path;
@@ -226,8 +231,12 @@ void EffectRenderer::OnFrame(long long timestamp) {
             lastFrameTimestamp_ == 0 ? 0.0 : static_cast<double>(timestamp - lastFrameTimestamp_) / 1e9;
         lastFrameTimestamp_ = timestamp;
 
-        const double time = useFixedTime_ ? fixedTime_
-                                         : static_cast<double>(timestamp - firstTimestamp_) / 1e9;
+        double time = paused_ ? pausedTime_
+                              : (useFixedTime_ ? fixedTime_
+                                               : static_cast<double>(timestamp - firstTimestamp_) / 1e9);
+        if (!paused_) {
+            pausedTime_ = time;
+        }
         if (hasPendingShader_) {
             BuildPrograms();
             hasPendingShader_ = false;
