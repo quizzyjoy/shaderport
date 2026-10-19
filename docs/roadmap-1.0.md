@@ -60,8 +60,13 @@
 | 4 | `Vignette` | filter（点式内联） | 1 pass，点式滤镜样本 |
 | 4 | `Glow` | filter（RTT） | 2 pass，模糊 + 合成链 |
 | 4 | `CursorRipples` | filter（指针模拟，RTT） | 2 pass，指针驱动链路 |
+| 5 | `RoundedRect` / `Polygon` / `Ring` / `Star` | shape | 解析式 SDF；默认 radius 填满画布（纯白，属预期） |
+| 5 | `BrightnessContrast` / `HueShift` | filter（点式内联） | 默认参数中性，输出 ≈ 输入 |
+| 5 | `Duotone` | filter（点式内联） | 默认双色调映射为灰度 |
 
 备选：`Vignette`、`Glow`。
+
+**当前状态**：25 个效果通过设备像素验证（其中 7 个为 shape / 调整类）。`Chrome`、`Neon` 暂缓：静态导出有 14 个 uniform 缺默认值，且效果依赖 shape/child alpha 的遮罩语义。
 
 **首批状态**：17 个全部通过设备像素验证（`Aurora` 之前的 alpha 差异确认是输入值不一致，不是 EGL 预乘问题；统一使用 `spec.resolved` 后 max ≤ 1）。
 

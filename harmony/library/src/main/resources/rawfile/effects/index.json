@@ -194,6 +194,82 @@
         "input"
       ],
       "path": "effects/cursor-ripples"
+    },
+    {
+      "id": "rounded-rect",
+      "name": "RoundedRect",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/rounded-rect"
+    },
+    {
+      "id": "polygon",
+      "name": "Polygon",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/polygon"
+    },
+    {
+      "id": "ring",
+      "name": "Ring",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/ring"
+    },
+    {
+      "id": "star",
+      "name": "Star",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/star"
+    },
+    {
+      "id": "brightness-contrast",
+      "name": "BrightnessContrast",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/brightness-contrast"
+    },
+    {
+      "id": "duotone",
+      "name": "Duotone",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/duotone"
+    },
+    {
+      "id": "hue-shift",
+      "name": "HueShift",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/hue-shift"
     }
   ]
 }

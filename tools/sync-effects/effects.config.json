@@ -113,5 +113,47 @@
     "id": "cursor-ripples",
     "layer": "main",
     "cost": "medium"
+  },
+  {
+    "name": "RoundedRect",
+    "id": "rounded-rect",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Polygon",
+    "id": "polygon",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Ring",
+    "id": "ring",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Star",
+    "id": "star",
+    "layer": "main",
+    "cost": "low"
+  },
+  {
+    "name": "BrightnessContrast",
+    "id": "brightness-contrast",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Duotone",
+    "id": "duotone",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "HueShift",
+    "id": "hue-shift",
+    "layer": "main",
+    "cost": "very-low"
   }
 ]
