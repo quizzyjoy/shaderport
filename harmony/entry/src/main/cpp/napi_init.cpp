@@ -28,6 +28,24 @@ napi_value MakeUndefined(napi_env env) {
     return result;
 }
 
+std::vector<std::string> GetStringArray(napi_env env, napi_value value) {
+    std::vector<std::string> out;
+    bool isArray = false;
+    napi_is_array(env, value, &isArray);
+    if (!isArray) {
+        return out;
+    }
+    uint32_t length = 0;
+    napi_get_array_length(env, value, &length);
+    out.reserve(length);
+    for (uint32_t i = 0; i < length; ++i) {
+        napi_value element = nullptr;
+        napi_get_element(env, value, i, &element);
+        out.push_back(GetString(env, element));
+    }
+    return out;
+}
+
 napi_value NativeInit(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3] = {nullptr};
@@ -63,6 +81,23 @@ napi_value NativeSetShader(napi_env env, napi_callback_info info) {
     const std::string block = GetString(env, args[1]);
     const std::string instance = GetString(env, args[2]);
     EffectRenderer::Get().SetShader(fragment, block, instance);
+    return MakeBoolean(env, true);
+}
+
+napi_value NativeSetEffect(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 3) {
+        return MakeBoolean(env, false);
+    }
+    const std::vector<std::string> fragments = GetStringArray(env, args[0]);
+    const std::vector<std::string> blocks = GetStringArray(env, args[1]);
+    const std::vector<std::string> instances = GetStringArray(env, args[2]);
+    if (fragments.empty()) {
+        return MakeBoolean(env, false);
+    }
+    EffectRenderer::Get().SetEffect(fragments, blocks, instances);
     return MakeBoolean(env, true);
 }
 
@@ -171,6 +206,7 @@ static napi_value Init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"nativeInit", nullptr, NativeInit, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetShader", nullptr, NativeSetShader, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"nativeSetEffect", nullptr, NativeSetEffect, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetParam", nullptr, NativeSetParam, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetPointer", nullptr, NativeSetPointer, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetTime", nullptr, NativeSetTime, nullptr, nullptr, nullptr, napi_default, nullptr},

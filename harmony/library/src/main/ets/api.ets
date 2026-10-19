@@ -1,6 +1,14 @@
 import { resourceManager } from '@kit.LocalizationKit';
 import { util } from '@kit.ArkTS';
-import { EffectIndex, EffectPass, EffectSpec, EffectSummary, ParamValue, ValidationResult } from './types';
+import {
+  EffectIndex,
+  EffectPass,
+  EffectSpec,
+  EffectSummary,
+  ParamValue,
+  PassSource,
+  ValidationResult,
+} from './types';
 
 let resource: resourceManager.ResourceManager | null = null;
 
@@ -46,6 +54,20 @@ export function getShaderSource(id: string, stage: string): string {
     return readText(`effects/${id}/${pass.file}`);
   }
   throw new Error(`unsupported stage: ${stage}`);
+}
+
+/** All passes in render order (last one renders to the screen), with their UBO binding. */
+export function getPassSources(id: string): PassSource[] {
+  const spec: EffectSpec = getEffect(id);
+  const out: PassSource[] = [];
+  for (let i = 0; i < spec.passes.length; i++) {
+    out.push({
+      fragment: readText(`effects/${id}/${spec.passes[i].file}`),
+      block: spec.ubo.block,
+      instance: spec.ubo.instance,
+    });
+  }
+  return out;
 }
 
 function srgbToLinear(channel: number): number {
@@ -114,14 +136,26 @@ function toNumbers(value: ESObject): number[] {
  * Default parameter values in the form the native renderer expects: colours are converted from
  * sRGB to linear RGBA, positions become vec2, enum strings become their numeric code.
  */
-export function getDefaultParams(id: string): ParamValue[] {
-  const spec: EffectSpec = getEffect(id);
+function paramsFor(spec: EffectSpec, node: string): ParamValue[] {
   const names: string[] = Object.keys(spec.defaults);
   const out: ParamValue[] = [];
   for (let i = 0; i < names.length; i++) {
     const name: string = names[i];
     const value: ESObject = spec.defaults[name];
-    out.push({ name: name, values: toNumbers(value) });
+    out.push({ name: `n_${node}.${name}`, values: toNumbers(value) });
+  }
+  return out;
+}
+
+export function getDefaultParams(id: string): ParamValue[] {
+  const spec: EffectSpec = getEffect(id);
+  const out: ParamValue[] = paramsFor(spec, spec.ubo.node);
+  if (spec.base !== null && spec.base !== undefined) {
+    const baseSpec: EffectSpec = getEffect(spec.base.id);
+    const baseParams: ParamValue[] = paramsFor(baseSpec, spec.base.node);
+    for (let i = 0; i < baseParams.length; i++) {
+      out.push(baseParams[i]);
+    }
   }
   return out;
 }

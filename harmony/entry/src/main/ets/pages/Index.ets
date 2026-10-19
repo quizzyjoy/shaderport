@@ -5,17 +5,16 @@ import {
   nativeDispose,
   nativeInit,
   nativeResize,
+  nativeSetEffect,
   nativeSetParam,
-  nativeSetShader,
   nativeSetTime,
 } from 'libentry.so';
 import {
-  EffectSpec,
   EffectSummary,
   ParamValue,
+  PassSource,
   getDefaultParams,
-  getEffect,
-  getShaderSource,
+  getPassSources,
   initShaderPort,
   listEffects,
 } from '@quizzyjoy/shaderport';
@@ -43,8 +42,16 @@ struct Index {
 
   private apply(id: string): void {
     try {
-      const spec: EffectSpec = getEffect(id);
-      nativeSetShader(getShaderSource(id, 'fragment'), spec.ubo.block, spec.ubo.instance);
+      const sources: PassSource[] = getPassSources(id);
+      const fragments: string[] = [];
+      const blocks: string[] = [];
+      const instances: string[] = [];
+      for (let i = 0; i < sources.length; i++) {
+        fragments.push(sources[i].fragment);
+        blocks.push(sources[i].block);
+        instances.push(sources[i].instance);
+      }
+      nativeSetEffect(fragments, blocks, instances);
       const params: ParamValue[] = getDefaultParams(id);
       for (let i = 0; i < params.length; i++) {
         nativeSetParam(params[i].name, params[i].values);

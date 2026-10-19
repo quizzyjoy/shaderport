@@ -3,11 +3,13 @@ export {
   listEffects,
   getEffect,
   getShaderSource,
+  getPassSources,
   getDefaultParams,
   validateParams,
 } from './src/main/ets/api';
 
 export {
+  EffectBase,
   EffectIndex,
   EffectPass,
   EffectReference,
@@ -15,6 +17,7 @@ export {
   EffectSummary,
   EffectUbo,
   ParamValue,
+  PassSource,
   PropSpec,
   ValidationResult,
 } from './src/main/ets/types';

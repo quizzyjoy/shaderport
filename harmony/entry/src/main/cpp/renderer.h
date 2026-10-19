@@ -20,13 +20,25 @@ struct UboMember {
     GLint size = 1;
 };
 
+struct ProgramState {
+    GLuint program = 0;
+    GLuint ubo = 0;
+    GLuint blockIndex = GL_INVALID_INDEX;
+    GLint uboSize = 0;
+    std::vector<UboMember> members;
+};
+
 class EffectRenderer {
 public:
     static EffectRenderer &Get();
 
     bool Init(uint64_t surfaceId, int width, int height);
+    /** Single-pass convenience wrapper. */
     void SetShader(const std::string &fragmentSource, const std::string &blockName,
                    const std::string &instanceName);
+    /** Multi-pass: index order, last pass renders to the screen. */
+    void SetEffect(const std::vector<std::string> &fragments, const std::vector<std::string> &blocks,
+                   const std::vector<std::string> &instances);
     void SetParam(const std::string &name, const std::vector<float> &values);
     void SetPointer(float x, float y, float active);
     void SetFixedTime(double time, bool fixed);
@@ -43,12 +55,18 @@ private:
     void OnFrame(long long timestamp);
 
     bool CreateEgl(uint64_t surfaceId);
-    bool BuildProgram();
-    void ReflectUbo();
+    bool BuildPrograms();
+    bool BuildOne(ProgramState &state, const std::string &fragment, const std::string &block,
+                  const std::string &instance);
+    void ReflectUbo(ProgramState &state, const std::string &blockName, const std::string &instanceName);
+    void DestroyPrograms();
+    void EnsureRttTargets(int width, int height);
+    void DestroyRttTargets();
     void PackAndDraw(double time);
-    void CaptureFrame();
+    void PackProgram(const ProgramState &state, double time);
     void WriteValue(std::vector<uint8_t> &buffer, const UboMember &member,
                     const std::vector<float> &values) const;
+    void CaptureFrame();
 
     EGLDisplay display_ = EGL_NO_DISPLAY;
     EGLSurface surface_ = EGL_NO_SURFACE;
@@ -57,21 +75,21 @@ private:
     OHNativeWindow *window_ = nullptr;
     OH_NativeVSync *vsync_ = nullptr;
 
-    GLuint program_ = 0;
     GLuint vao_ = 0;
     GLuint vbo_ = 0;
-    GLuint ubo_ = 0;
-    GLuint blockIndex_ = GL_INVALID_INDEX;
-    GLint uboSize_ = 0;
-    std::vector<UboMember> members_;
+    std::vector<ProgramState> programs_;
+
+    GLuint rttTex_[2] = {0, 0};
+    GLuint rttFbo_[2] = {0, 0};
+    int rttWidth_ = 0;
+    int rttHeight_ = 0;
 
     std::mutex mutex_;
     std::unordered_map<std::string, std::vector<float>> params_;
-    std::string pendingFragment_;
-    std::string blockName_ = "combined_block_0Fragment";
-    std::string instanceName_ = "_group_0_binding_0_fs";
+    std::vector<std::string> pendingFragments_;
+    std::vector<std::string> pendingBlocks_;
+    std::vector<std::string> pendingInstances_;
     bool hasPendingShader_ = false;
-    bool programDirty_ = false;
 
     int width_ = 0;
     int height_ = 0;

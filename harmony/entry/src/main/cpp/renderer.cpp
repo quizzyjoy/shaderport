@@ -3,7 +3,6 @@
 #include <EGL/eglext.h>
 #include <hilog/log.h>
 
-#include <chrono>
 #include <cstdio>
 #include <cstring>
 
@@ -141,10 +140,16 @@ bool EffectRenderer::CreateEgl(uint64_t surfaceId) {
 
 void EffectRenderer::SetShader(const std::string &fragmentSource, const std::string &blockName,
                                const std::string &instanceName) {
+    SetEffect({fragmentSource}, {blockName}, {instanceName});
+}
+
+void EffectRenderer::SetEffect(const std::vector<std::string> &fragments,
+                               const std::vector<std::string> &blocks,
+                               const std::vector<std::string> &instances) {
     std::lock_guard<std::mutex> lock(mutex_);
-    pendingFragment_ = fragmentSource;
-    blockName_ = blockName;
-    instanceName_ = instanceName;
+    pendingFragments_ = fragments;
+    pendingBlocks_ = blocks;
+    pendingInstances_ = instances;
     hasPendingShader_ = true;
 }
 
@@ -204,10 +209,10 @@ void EffectRenderer::OnFrame(long long timestamp) {
         const double time = useFixedTime_ ? fixedTime_
                                          : static_cast<double>(timestamp - firstTimestamp_) / 1e9;
         if (hasPendingShader_) {
-            BuildProgram();
+            BuildPrograms();
             hasPendingShader_ = false;
         }
-        if (program_ != 0) {
+        if (!programs_.empty()) {
             PackAndDraw(time);
             if (captureRequested_ && !capturePath_.empty()) {
                 CaptureFrame();
@@ -223,9 +228,38 @@ void EffectRenderer::OnFrame(long long timestamp) {
     }
 }
 
-bool EffectRenderer::BuildProgram() {
+bool EffectRenderer::BuildPrograms() {
+    DestroyPrograms();
+    const size_t count = pendingFragments_.size();
+    if (count == 0) {
+        return false;
+    }
+    programs_.reserve(count);
+    for (size_t i = 0; i < count; ++i) {
+        const std::string block = i < pendingBlocks_.size() ? pendingBlocks_[i] : "combined_block_0Fragment";
+        const std::string instance =
+            i < pendingInstances_.size() ? pendingInstances_[i] : "_group_0_binding_0_fs";
+        ProgramState state;
+        if (!BuildOne(state, pendingFragments_[i], block, instance)) {
+            if (state.program != 0) {
+                glDeleteProgram(state.program);
+            }
+            if (state.ubo != 0) {
+                glDeleteBuffers(1, &state.ubo);
+            }
+            DestroyPrograms();
+            return false;
+        }
+        programs_.push_back(state);
+    }
+    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "effect built: %{public}zu pass(es)", count);
+    return true;
+}
+
+bool EffectRenderer::BuildOne(ProgramState &state, const std::string &fragment, const std::string &block,
+                              const std::string &instance) {
     GLuint vs = CompileShader(GL_VERTEX_SHADER, kVertexShader);
-    GLuint fs = CompileShader(GL_FRAGMENT_SHADER, pendingFragment_.c_str());
+    GLuint fs = CompileShader(GL_FRAGMENT_SHADER, fragment.c_str());
     if (vs == 0 || fs == 0) {
         if (vs != 0) glDeleteShader(vs);
         if (fs != 0) glDeleteShader(fs);
@@ -248,71 +282,204 @@ bool EffectRenderer::BuildProgram() {
         glDeleteProgram(program);
         return false;
     }
-
-    if (program_ != 0) {
-        glDeleteProgram(program_);
-    }
-    program_ = program;
-
-    if (ubo_ != 0) {
-        glDeleteBuffers(1, &ubo_);
-        ubo_ = 0;
-    }
-    ReflectUbo();
+    state.program = program;
+    ReflectUbo(state, block, instance);
     return true;
 }
 
-void EffectRenderer::ReflectUbo() {
-    members_.clear();
-    uboSize_ = 0;
-    blockIndex_ = glGetUniformBlockIndex(program_, blockName_.c_str());
+void EffectRenderer::ReflectUbo(ProgramState &state, const std::string &blockName,
+                                const std::string &instanceName) {
+    state.members.clear();
+    state.uboSize = 0;
+    state.blockIndex = glGetUniformBlockIndex(state.program, blockName.c_str());
 
-    if (blockIndex_ == GL_INVALID_INDEX) {
+    if (state.blockIndex == GL_INVALID_INDEX) {
         GLint blockCount = 0;
-        glGetProgramiv(program_, GL_ACTIVE_UNIFORM_BLOCKS, &blockCount);
+        glGetProgramiv(state.program, GL_ACTIVE_UNIFORM_BLOCKS, &blockCount);
         for (GLint i = 0; i < blockCount; ++i) {
             char name[256] = {0};
-            glGetActiveUniformBlockName(program_, static_cast<GLuint>(i), sizeof(name), nullptr, name);
-            if (blockName_ == name) {
-                blockIndex_ = static_cast<GLuint>(i);
+            glGetActiveUniformBlockName(state.program, static_cast<GLuint>(i), sizeof(name), nullptr, name);
+            if (blockName == name) {
+                state.blockIndex = static_cast<GLuint>(i);
                 break;
             }
         }
     }
-    if (blockIndex_ == GL_INVALID_INDEX) {
+    if (state.blockIndex == GL_INVALID_INDEX) {
         OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG, "uniform block '%{public}s' not found",
-                     blockName_.c_str());
+                     blockName.c_str());
         return;
     }
 
-    glGetActiveUniformBlockiv(program_, blockIndex_, GL_UNIFORM_BLOCK_DATA_SIZE, &uboSize_);
-    glUniformBlockBinding(program_, blockIndex_, 0);
+    glGetActiveUniformBlockiv(state.program, state.blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &state.uboSize);
+    glUniformBlockBinding(state.program, state.blockIndex, 0);
 
-    glGenBuffers(1, &ubo_);
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-    glBufferData(GL_UNIFORM_BUFFER, uboSize_, nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_);
+    glGenBuffers(1, &state.ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, state.ubo);
+    glBufferData(GL_UNIFORM_BUFFER, state.uboSize, nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, state.ubo);
 
-    const std::string prefix = instanceName_ + ".";
+    const std::string prefix = instanceName + ".";
     GLint uniformCount = 0;
-    glGetProgramiv(program_, GL_ACTIVE_UNIFORMS, &uniformCount);
+    glGetProgramiv(state.program, GL_ACTIVE_UNIFORMS, &uniformCount);
     for (GLint i = 0; i < uniformCount; ++i) {
         char name[256] = {0};
         GLint size = 0;
         GLenum type = GL_FLOAT;
-        glGetActiveUniform(program_, static_cast<GLuint>(i), sizeof(name), nullptr, &size, &type, name);
+        glGetActiveUniform(state.program, static_cast<GLuint>(i), sizeof(name), nullptr, &size, &type, name);
         std::string full(name);
+        if (type == GL_SAMPLER_2D) {
+            glUseProgram(state.program);
+            glUniform1i(glGetUniformLocation(state.program, name), 0);
+            continue;
+        }
         if (full.compare(0, prefix.size(), prefix) != 0) {
             continue;
         }
         GLint offset = 0;
         GLuint index = static_cast<GLuint>(i);
-        glGetActiveUniformsiv(program_, 1, &index, GL_UNIFORM_OFFSET, &offset);
-        members_.push_back({full.substr(prefix.size()), type, offset, size});
+        glGetActiveUniformsiv(state.program, 1, &index, GL_UNIFORM_OFFSET, &offset);
+        state.members.push_back({full.substr(prefix.size()), type, offset, size});
+    }
+}
+
+void EffectRenderer::DestroyPrograms() {
+    for (auto &state : programs_) {
+        if (state.program != 0) glDeleteProgram(state.program);
+        if (state.ubo != 0) glDeleteBuffers(1, &state.ubo);
+    }
+    programs_.clear();
+}
+
+void EffectRenderer::EnsureRttTargets(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+    if (rttWidth_ == width && rttHeight_ == height && rttFbo_[0] != 0 && rttFbo_[1] != 0) {
+        return;
+    }
+    for (int i = 0; i < 2; ++i) {
+        if (rttTex_[i] == 0) {
+            glGenTextures(1, &rttTex_[i]);
+        }
+        glBindTexture(GL_TEXTURE_2D, rttTex_[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+        if (rttFbo_[i] == 0) {
+            glGenFramebuffers(1, &rttFbo_[i]);
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, rttFbo_[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rttTex_[i], 0);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    rttWidth_ = width;
+    rttHeight_ = height;
+}
+
+void EffectRenderer::DestroyRttTargets() {
+    for (int i = 0; i < 2; ++i) {
+        if (rttFbo_[i] != 0) {
+            glDeleteFramebuffers(1, &rttFbo_[i]);
+            rttFbo_[i] = 0;
+        }
+        if (rttTex_[i] != 0) {
+            glDeleteTextures(1, &rttTex_[i]);
+            rttTex_[i] = 0;
+        }
+    }
+    rttWidth_ = 0;
+    rttHeight_ = 0;
+}
+
+void EffectRenderer::PackAndDraw(double time) {
+    const int count = static_cast<int>(programs_.size());
+    if (count == 0) {
+        return;
+    }
+    if (count > 1) {
+        EnsureRttTargets(width_, height_);
     }
 
-    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "ubo=%{public}d bytes, members=%{public}zu",
-                 uboSize_, members_.size());
+    for (int i = 0; i < count; ++i) {
+        const ProgramState &state = programs_[i];
+        if (state.program == 0) {
+            continue;
+        }
+        const bool isFinal = (i == count - 1);
+        glBindFramebuffer(GL_FRAMEBUFFER, isFinal ? 0 : rttFbo_[i % 2]);
+        glViewport(0, 0, width_, height_);
+        if (isFinal) {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        } else {
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(state.program);
+        PackProgram(state, time);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, state.ubo);
+
+        if (i > 0) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, rttTex_[(i - 1) % 2]);
+        }
+
+        glBindVertexArray(vao_);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+    glBindVertexArray(0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void EffectRenderer::PackProgram(const ProgramState &state, double time) {
+    std::vector<uint8_t> buffer(static_cast<size_t>(state.uboSize), 0);
+    const float vw = static_cast<float>(width_);
+    const float vh = static_cast<float>(height_);
+    const float aspect = vh > 0.0f ? vw / vh : 1.0f;
+
+    for (const auto &member : state.members) {
+        if (member.size > 1) {
+            continue;
+        }
+        const size_t dot = member.path.find('.');
+        const std::string node = dot == std::string::npos ? member.path : member.path.substr(0, dot);
+        const std::string leaf = dot == std::string::npos ? std::string() : member.path.substr(dot + 1);
+
+        std::vector<float> values;
+        if (node == "_sys") {
+            if (leaf == "time") values = {static_cast<float>(time)};
+            else if (leaf == "viewportSize") values = {vw, vh};
+            else if (leaf == "logicalViewportSize") values = {vw, vh};
+            else if (leaf == "aspect") values = {aspect};
+            else if (leaf == "pointer") values = {pointerX_, pointerY_};
+            else if (leaf == "pointerActive") values = {pointerActive_};
+        } else if (node == "n_root") {
+            if (leaf == "_opacity") values = {1.0f};
+        } else if (node == "n_n" || node == "n_base") {
+            if (leaf == "_opacity") {
+                values = {1.0f};
+            } else if (leaf == "_animTime") {
+                values = {static_cast<float>(time)};
+            } else if (leaf == "stopCount") {
+                values = {0.0f};
+            } else {
+                const auto it = params_.find(member.path);
+                if (it != params_.end()) {
+                    values = it->second;
+                }
+            }
+        }
+        WriteValue(buffer, member, values);
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, state.ubo);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, static_cast<GLsizeiptr>(buffer.size()), buffer.data());
 }
 
 void EffectRenderer::WriteValue(std::vector<uint8_t> &buffer, const UboMember &member,
@@ -352,66 +519,13 @@ void EffectRenderer::WriteValue(std::vector<uint8_t> &buffer, const UboMember &m
     }
 }
 
-void EffectRenderer::PackAndDraw(double time) {
-    std::vector<uint8_t> buffer(static_cast<size_t>(uboSize_), 0);
-    const float vw = static_cast<float>(width_);
-    const float vh = static_cast<float>(height_);
-    const float aspect = vh > 0.0f ? vw / vh : 1.0f;
-
-    for (const auto &member : members_) {
-        if (member.size > 1) {
-            continue;  // array elements stay zero (stops are null in the current specs)
-        }
-        const size_t dot = member.path.find('.');
-        const std::string node = dot == std::string::npos ? member.path : member.path.substr(0, dot);
-        const std::string leaf = dot == std::string::npos ? std::string() : member.path.substr(dot + 1);
-
-        std::vector<float> values;
-        if (node == "_sys") {
-            if (leaf == "time") values = {static_cast<float>(time)};
-            else if (leaf == "viewportSize") values = {vw, vh};
-            else if (leaf == "logicalViewportSize") values = {vw, vh};
-            else if (leaf == "aspect") values = {aspect};
-            else if (leaf == "pointer") values = {pointerX_, pointerY_};
-            else if (leaf == "pointerActive") values = {pointerActive_};
-        } else if (node == "n_root") {
-            if (leaf == "_opacity") values = {1.0f};
-        } else if (node == "n_n" || node == "n_base") {
-            if (leaf == "_opacity") {
-                values = {1.0f};
-            } else if (leaf == "_animTime") {
-                values = {static_cast<float>(time)};
-            } else if (leaf == "stopCount") {
-                values = {0.0f};
-            } else {
-                const auto it = params_.find(leaf);
-                if (it != params_.end()) {
-                    values = it->second;
-                }
-            }
-        }
-        WriteValue(buffer, member, values);
-    }
-
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo_);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, static_cast<GLsizeiptr>(buffer.size()), buffer.data());
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_);
-
-    glViewport(0, 0, width_, height_);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glUseProgram(program_);
-    glBindVertexArray(vao_);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-}
-
 void EffectRenderer::CaptureFrame() {
     if (width_ <= 0 || height_ <= 0) {
         captureRequested_ = false;
         captureReady_.store(true);
         return;
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     const size_t pixelBytes = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 4;
     std::vector<uint8_t> pixels(pixelBytes, 0);
     glReadPixels(0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
@@ -442,12 +556,10 @@ void EffectRenderer::Dispose() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (display_ != EGL_NO_DISPLAY && context_ != EGL_NO_CONTEXT) {
         eglMakeCurrent(display_, surface_, surface_, context_);
-        if (program_ != 0) glDeleteProgram(program_);
-        if (ubo_ != 0) glDeleteBuffers(1, &ubo_);
+        DestroyPrograms();
+        DestroyRttTargets();
         if (vbo_ != 0) glDeleteBuffers(1, &vbo_);
         if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
-        program_ = 0;
-        ubo_ = 0;
         vbo_ = 0;
         vao_ = 0;
         eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);

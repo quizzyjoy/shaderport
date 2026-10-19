@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "id": "blur",
+  "name": "Blur",
+  "category": "Blurs",
+  "layer": "main",
+  "cost": "medium",
+  "role": "filter",
+  "precision": "highp",
+  "glslVersion": "300 es",
+  "requires": [
+    "input"
+  ],
+  "base": {
+    "id": "plasma",
+    "node": "base"
+  },
+  "ubo": {
+    "block": "combined_block_0Fragment",
+    "instance": "_group_0_binding_0_fs",
+    "node": "n",
+    "baseNode": "base"
+  },
+  "color": {
+    "input": "srgb",
+    "working": "linear-srgb",
+    "output": "srgb-encoded",
+    "alpha": "straight",
+    "note": "final pass already applies the sRGB OETF; do not encode again"
+  },
+  "passes": [
+    {
+      "index": 0,
+      "key": "rtt_rtt_0",
+      "file": "passes/rtt_rtt_0.glsl",
+      "entry": "rtt_rtt_0",
+      "samplers": []
+    },
+    {
+      "index": 1,
+      "key": "final",
+      "file": "passes/final.glsl",
+      "entry": "final_1",
+      "samplers": [
+        "_group_1_binding_0_fs"
+      ]
+    }
+  ],
+  "props": {
+    "intensity": {
+      "default": 50,
+      "description": "Intensity of the blur effect",
+      "ui": {
+        "type": [
+          "range",
+          "map"
+        ],
+        "min": 0,
+        "max": 200,
+        "step": 1,
+        "label": "Intensity",
+        "group": "Effect"
+      }
+    }
+  },
+  "defaults": {
+    "intensity": 50
+  },
+  "reference": null,
+  "provenance": {
+    "class": "ported",
+    "repo": "shader-effects-inc/shaders",
+    "version": "v4.0.4",
+    "path": "packages/core/src/shaders/Blur/index.ts",
+    "license": "MIT",
+    "copyright": "© 2026 Shader Effects Inc."
+  }
+}

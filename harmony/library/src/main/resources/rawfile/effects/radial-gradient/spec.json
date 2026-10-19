@@ -9,6 +9,7 @@
   "precision": "highp",
   "glslVersion": "300 es",
   "requires": [],
+  "base": null,
   "ubo": {
     "block": "combined_block_0Fragment",
     "instance": "_group_0_binding_0_fs",

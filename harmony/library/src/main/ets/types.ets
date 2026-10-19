@@ -51,6 +51,11 @@ export interface PropSpec {
   ui?: ESObject;
 }
 
+export interface EffectBase {
+  id: string;
+  node: string;
+}
+
 export interface EffectSpec {
   schema: number;
   id: string;
@@ -62,6 +67,7 @@ export interface EffectSpec {
   precision: string;
   glslVersion: string;
   requires: string[];
+  base: EffectBase | null;
   ubo: EffectUbo;
   color: EffectColor;
   passes: EffectPass[];
@@ -73,6 +79,12 @@ export interface EffectSpec {
 export interface ParamValue {
   name: string;
   values: number[];
+}
+
+export interface PassSource {
+  fragment: string;
+  block: string;
+  instance: string;
 }
 
 export interface ValidationResult {

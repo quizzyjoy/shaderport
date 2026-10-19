@@ -44,6 +44,30 @@
       "passes": 1,
       "requires": [],
       "path": "effects/plasma"
+    },
+    {
+      "id": "twirl",
+      "name": "Twirl",
+      "category": "Distortions",
+      "layer": "main",
+      "cost": "medium",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/twirl"
+    },
+    {
+      "id": "blur",
+      "name": "Blur",
+      "category": "Blurs",
+      "layer": "main",
+      "cost": "medium",
+      "passes": 2,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/blur"
     }
   ]
 }
