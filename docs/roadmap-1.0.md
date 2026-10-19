@@ -54,6 +54,8 @@
 | 3 | `Ripples` | generator | 同心波纹，节拍映射载体 |
 | 3 | `Twirl` | warp | 首个消费输入的效果（UV 折叠，单 pass） |
 | 3 | `Blur` | filter | 可分离高斯，两趟 RTT ping-pong |
+| 4 | `MeshGradient` | generator | 色标数组 + 每帧 `meshAnchors`（导出时烘焙） |
+| 4 | `FlowingGradient` | generator | 每帧预转换色 `convA..D`（导出时烘焙） |
 
 备选：`Vignette`、`Glow`。
 
@@ -61,13 +63,12 @@
 
 | 效果 | 阻塞点 |
 |---|---|
-| `MeshGradient` | 色标数组（`colorsArray`/`positionsArray`/`convertedColorsArray`/`stopCount`）已能通过 `spec.resolved` 正确导出；仍缺 `meshAnchors` —— 它由 `scatteredAnchors` **每帧在 CPU 上生成**（依赖 time/drift），静态构建里是全 0，渲出均匀灰 |
-| `FlowingGradient` | `convA..convD` 同样是 renderer 每帧写入的预转换色，静态为 0 |
 | `Aurora` | 透明效果的 alpha 语义未对齐：参考渲染器与设备帧的 RGB 差异呈 alpha 依赖（设备 alpha 约 2×），需先确认 EGL 窗口表面的 alpha/预乘约定 |
+| `Vignette` / `Glow` | 等 Aurora 的透明/预乘约定确定后再接（都是 filter） |
 
-→ 前两个需要把"每帧 CPU 生成 extraFields"的逻辑也纳入导出（`scatteredAnchors` / 预转换色），与 `Vignette`/`Glow` 一起放到下一批。
-
-> 已落地：`spec.resolved` 现在由 `tools/export-wgsl` 从上游 uniform store 导出**最终值**（颜色在 P3-linear 工作空间、位置已完成 Y 翻转、枚举已编码、色标数组已打包）。native/JS 打包器优先使用 resolved，数组按 `GL_UNIFORM_ARRAY_STRIDE` 写入。
+> 已落地：`spec.resolved` 现在由 `tools/export-wgsl` 从上游 uniform store 导出**最终值**（颜色在 P3-linear 工作空间、位置已完成 Y 翻转、枚举已编码、色标数组已打包）。导出器还会执行一次 `ir.onBeforeRender`，把每帧 CPU 生成的 extraFields（`meshAnchors` / `convA..D`）写回 store 并写入 resolved；native/JS 打包器优先使用 resolved，数组按 `GL_UNIFORM_ARRAY_STRIDE` 写入。
+>
+> 已知限制：`meshAnchors` 依赖 aspect，烘焙时用的是 **1:1**（与参考图一致）。其他宽高比下会沿用同一组锚点，观感与上游的"每帧按实际 aspect 重算"略有差异，但跨端一致。
 
 ## 6. 决策记录
 

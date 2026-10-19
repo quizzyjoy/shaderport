@@ -77,5 +77,17 @@
     "id": "ripples",
     "layer": "main",
     "cost": "low"
+  },
+  {
+    "name": "MeshGradient",
+    "id": "mesh-gradient",
+    "layer": "background",
+    "cost": "low"
+  },
+  {
+    "name": "FlowingGradient",
+    "id": "flowing-gradient",
+    "layer": "background",
+    "cost": "low"
   }
 ]

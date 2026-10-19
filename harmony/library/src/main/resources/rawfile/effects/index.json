@@ -128,6 +128,26 @@
       "passes": 1,
       "requires": [],
       "path": "effects/ripples"
+    },
+    {
+      "id": "mesh-gradient",
+      "name": "MeshGradient",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/mesh-gradient"
+    },
+    {
+      "id": "flowing-gradient",
+      "name": "FlowingGradient",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/flowing-gradient"
     }
   ]
 }

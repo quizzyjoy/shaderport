@@ -175,21 +175,47 @@ function exportPasses(
     name: string,
     base?: GpuShaderDefinition,
 ): {passes: ExportedPass[]; resolved: Record<string, unknown>} {
+    // Reference time used for the exported reference images. Seeding _animTime lets the
+    // per-frame extraFields (meshAnchors, preconverted colours) compute their real values.
+    const referenceTime = 1.0
     const specs = base
         ? [
               {id: 'root', def: RootContainer, parentId: null},
-              {id: 'n', def, parentId: 'root', metadata: {renderOrder: 1}, animTime: 0},
-              {id: 'base', def: base, parentId: 'n', metadata: {renderOrder: 0}, animTime: 0},
+              {id: 'n', def, parentId: 'root', metadata: {renderOrder: 1}, animTime: referenceTime},
+              {id: 'base', def: base, parentId: 'n', metadata: {renderOrder: 0}, animTime: referenceTime},
           ]
         : [
               {id: 'root', def: RootContainer, parentId: null},
-              {id: 'n', def, parentId: 'root', metadata: {renderOrder: 0}, animTime: 0},
+              {id: 'n', def, parentId: 'root', metadata: {renderOrder: 0}, animTime: referenceTime},
           ]
 
     const {registry, handlesById} = buildRegistryWithHandles(specs as never)
-    const ir = composeNodeTree(registry) as unknown as {
+
+    // Route params.setExtraField(...) into the corresponding store handle so the per-frame
+    // writers (scatteredAnchors, preconverted colours) leave their computed values behind.
+    const writeExtraField = (nodeId: string, field: string, value: number | number[]): void => {
+        const handle = handlesById[nodeId]?.[field]
+        if (!handle) return
+        if (handle instanceof ArrayFieldHandle) {
+            handle.array = Array.isArray(value) ? value : [value]
+        } else {
+            ;(handle as {value: unknown}).value = value
+        }
+    }
+
+    const ir = composeNodeTree(registry, {writeExtraField}) as unknown as {
         finalPass: {entry: unknown}
         rttPasses: Array<{textureKey?: string; fragment: {entry: unknown}}>
+        onBeforeRender?: Array<(params?: unknown) => void>
+    }
+
+    // Run the shader-registered per-frame writers once so extraFields hold their frame values.
+    for (const callback of ir.onBeforeRender ?? []) {
+        try {
+            callback({})
+        } catch {
+            // A host-only driver may need a GPU/device; the field keeps its initial value.
+        }
     }
 
     const passes = [
