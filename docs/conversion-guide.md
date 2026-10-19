@@ -102,7 +102,19 @@ harmony/library/src/main/resources/rawfile/effects/   镜像 + index.json
   否则 >30 个效果的轮播会被熄屏打断。
 - 折叠屏尺寸变化（`devecocli emulator fold close/open`）会触发 `resize`，RTT 自动重建，可用来验证多 pass。
 
-## 5. 已知限制
+## 5. CI
+
+`.github/workflows/tools.yml` 在 GitHub Actions 上跑 Node 侧链路：
+
+1. checkout 上游 `v4.0.4` 到 `.cache/shaders`
+2. 安装三个工具目录的依赖（`npm ci`）
+3. `export-wgsl` → `wgsl2glsles` → `glsl-gate`
+4. `sync-effects` 后执行 `git diff --exit-code`，**防止 effects/ 与 rawfile 镜像漂移**
+5. `render-reference` 生成参考图并上传 `build/` 报告（不比较 PNG，避免 Chrome 版本差异）
+
+需要 DevEco/hvigor 的 HAP/HAR 构建不在这个 workflow 里：GitHub 托管 runner 没有 HarmonyOS SDK，走自托管 runner 或发布清单。设备 diff 也需要真机/模拟器，同样不在 CI 内。
+
+## 6. 已知限制
 
 | 限制 | 说明 |
 |---|---|

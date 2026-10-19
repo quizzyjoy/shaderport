@@ -1,0 +1,81 @@
+name: tools
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'effects/**'
+      - 'tools/**'
+      - 'harmony/library/**'
+      - 'docs/**'
+      - '.github/workflows/tools.yml'
+  pull_request:
+    paths:
+      - 'effects/**'
+      - 'tools/**'
+      - 'harmony/library/**'
+      - 'docs/**'
+      - '.github/workflows/tools.yml'
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      UPSTREAM_REF: v4.0.4
+      SHADERS_DIR: ${{ github.workspace }}/.cache/shaders
+      CHROME_PATH: /usr/bin/google-chrome
+
+    steps:
+      - name: Checkout shaderport
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Checkout upstream shaders
+        run: |
+          git clone --depth 1 --branch "$UPSTREAM_REF" \
+            https://github.com/shader-effects-inc/shaders.git "$SHADERS_DIR"
+
+      - name: Install tool dependencies
+        run: |
+          for dir in tools/wgsl2glsles tools/glsl-gate tools/render-reference; do
+            echo "== $dir =="
+            (cd "$dir" && npm ci)
+          done
+
+      - name: Export WGSL and resolve uniforms
+        run: node tools/export-wgsl/run.mjs
+
+      - name: Convert to GLSL ES 3.00
+        run: node tools/wgsl2glsles/run.mjs
+
+      - name: Compile and link gate
+        run: node tools/glsl-gate/run.mjs
+
+      - name: Sync effect packages and fail on drift
+        run: |
+          node tools/sync-effects/run.mjs
+          git diff --exit-code -- effects harmony/library/src/main/resources/rawfile/effects
+
+      - name: Render references
+        run: node tools/render-reference/run.mjs
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          if-no-files-found: warn
+          path: |
+            build/wgsl/manifest.json
+            build/glsl/report.json
+            build/glsl/gate.json
