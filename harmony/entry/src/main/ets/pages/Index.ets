@@ -35,6 +35,8 @@ struct Index {
   @State params: ParamDescriptor[] = [];
   @State stats: string = '';
   @State paused: boolean = false;
+  @State showStats: boolean = true;
+  @State showPanel: boolean = true;
   private started: boolean = false;
   private filesDir: string = '';
   private statsTimer: number = -1;
@@ -95,13 +97,12 @@ struct Index {
     }
   }
 
-  private step(delta: number): void {
-    if (this.effects.length === 0) {
-      return;
-    }
-    const index: number = this.effectIndex();
-    const next: number = (index + delta + this.effects.length) % this.effects.length;
-    this.select(this.effects[next].id);
+  private toggleStats(): void {
+    this.showStats = !this.showStats;
+  }
+
+  private togglePanel(): void {
+    this.showPanel = !this.showPanel;
   }
 
   private effectIndex(): number {
@@ -335,7 +336,9 @@ struct Index {
         Column() {
           Row({ space: 10 }) {
             Text(this.status).fontSize(13).fontColor(Color.White).layoutWeight(1)
-            Text(this.stats).fontSize(12).fontColor('#CCFFFFFF')
+            if (this.showStats) {
+              Text(this.stats).fontSize(12).fontColor('#CCFFFFFF')
+            }
           }
           .padding({ left: 12, right: 12, top: 8, bottom: 2 })
 
@@ -349,34 +352,40 @@ struct Index {
         .width('100%')
         .backgroundColor('#B3000000')
 
+        Row({ space: 6 }) {
+          Select(this.makeEffectOptions())
+            .selected(this.effectIndex())
+            .value(this.effectName())
+            .fontColor(Color.White)
+            .optionFontColor(Color.Black)
+            .selectedOptionFontColor('#5b18ca')
+            .height(34)
+            .layoutWeight(1)
+            .onSelect((index: number) => this.select(this.effects[index].id))
+
+          Button('Perf')
+            .fontSize(11)
+            .width(56)
+            .height(34)
+            .backgroundColor(this.showStats ? '#5b18ca' : '#33FFFFFF')
+            .onClick(() => this.toggleStats())
+
+          Button('Panel')
+            .fontSize(11)
+            .width(60)
+            .height(34)
+            .backgroundColor(this.showPanel ? '#5b18ca' : '#33FFFFFF')
+            .onClick(() => this.togglePanel())
+        }
+        .width('100%')
+        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+        .backgroundColor('#B3000000')
+
         Blank()
 
-        Column({ space: 4 }) {
-          Row({ space: 6 }) {
-            Button('‹')
-              .fontSize(16)
-              .width(34)
-              .height(34)
-              .backgroundColor('#33FFFFFF')
-              .onClick(() => this.step(-1))
-
-            Select(this.makeEffectOptions())
-              .selected(this.effectIndex())
-              .value(this.effectName())
-              .height(34)
-              .layoutWeight(1)
-              .onSelect((index: number) => this.select(this.effects[index].id))
-
-            Button('›')
-              .fontSize(16)
-              .width(34)
-              .height(34)
-              .backgroundColor('#33FFFFFF')
-              .onClick(() => this.step(1))
-          }
-          .width('100%')
-
-          Stack({ alignContent: Alignment.Bottom }) {
+        if (this.showPanel) {
+          Column({ space: 4 }) {
+            Stack({ alignContent: Alignment.Bottom }) {
             Scroll() {
               Column() {
                 ForEach(this.params, (param: ParamDescriptor, index: number) => {
@@ -429,6 +438,7 @@ struct Index {
         .width('100%')
         .padding({ left: 12, right: 12, bottom: 10, top: 6 })
         .backgroundColor('#F2000000')
+        }
       }
       .width('100%')
       .height('100%')
