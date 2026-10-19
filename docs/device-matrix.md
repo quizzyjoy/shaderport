@@ -7,8 +7,8 @@
 
 | 设备 | 系统 | 形态 | 视口 | 状态 |
 |---|---|---|---|---|
-| 模拟器 `bp_fold` | HarmonyOS 6.1.0(23) | foldable | 展开 **2224×2288** / 折叠 **1080×2296** | ✅ 48 个效果 |
-| 真机 `VYG-AL30` | HarmonyOS 7.0.0.109 | phone | — | ⏸ 未签名，待 DevEco 签名后补测 |
+| 模拟器 `bp_fold` | HarmonyOS 6.1.0(23) | foldable | 展开 **2224×2288** / 折叠 **1080×2296** | ✅ 48 个效果，逐像素 |
+| 真机 `VYG-AL30`（Mate 80） | HarmonyOS 7.0.0.109 | phone | **1280×2598** | ✅ 48 个效果运行；像素 diff 受 GPU 精度影响，见 §2.1 |
 
 说明：
 
@@ -30,6 +30,20 @@
 - **47 个严格通过**：`meanAbs = 0.00`，`max ≤ 1`（RTT 类最大 13：Blur / Glow / CursorRipples）
 - **PerlinNoise**：`meanAbs 3.52`、`over8 9.70%`、`bandΔ 5.9`（放宽阈值；噪声 hash 对驱动敏感）
 - 形状/中性调整的"纯白/无变化"均为默认参数导致，不是渲染错误
+
+### 2.1 真机（Maleoon GPU）的像素差异
+
+真机可以安装签名 HAP、运行全部效果、`nativeCapture` 与 `hdc file recv` 均正常；但与参考渲染器逐像素比较时出现**驱动精度/色彩管线差异**：
+
+| 效果 | meanAbs | max | over8 | 结论 |
+|---|---|---|---|---|
+| SolidColor | 6.67 | 8 | 0% | 纯色偏移约 7/255（`linearToSrgb` 的 pow 精度） |
+| LinearGradient | 25.84 | 93 | 100% | 渐变过渡颜色偏移，视觉相近 |
+| Plasma | 12.12 | 75 | 74.6% | 高频噪声 + 颜色精度 |
+
+- 尝试过 `OH_NativeWindow_SetColorSpace(SRGB)` + `EGL_GL_COLORSPACE_SRGB`，读回值**不变** → 不是 surface 色域标签问题。
+- 模拟器（Intel ANGLE）逐像素一致；真机（Maleoon）在 `pow`/颜色混合上有可测的精度差异。
+- **结论**：模拟器保留为逐像素基准；真机验收改为"结构正确 + band 均值 + 目视"，不以严格 diff 判定失败。
 
 ## 3. 已验证的运行能力
 

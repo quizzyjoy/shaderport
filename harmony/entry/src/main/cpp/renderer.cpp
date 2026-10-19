@@ -2,6 +2,7 @@
 
 #include <EGL/eglext.h>
 #include <hilog/log.h>
+#include <native_buffer/buffer_common.h>
 
 #include <cstdio>
 #include <cstring>
@@ -93,6 +94,12 @@ bool EffectRenderer::CreateEgl(uint64_t surfaceId) {
         return false;
     }
 
+    // The shader writes sRGB-encoded values. Tag the window buffer as sRGB so devices whose
+    // default surface is Display-P3 do not reinterpret the values (visible as a gamut shift).
+    const int32_t colorSpaceResult = OH_NativeWindow_SetColorSpace(window_, OH_COLORSPACE_SRGB_FULL);
+    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "window colorspace srgb ret=%{public}d",
+                 colorSpaceResult);
+
     display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (display_ == EGL_NO_DISPLAY || eglInitialize(display_, nullptr, nullptr) != EGL_TRUE) {
         OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG, "eglInitialize failed");
@@ -127,6 +134,9 @@ bool EffectRenderer::CreateEgl(uint64_t surfaceId) {
         OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG, "eglCreateWindowSurface failed");
         return false;
     }
+
+    // Ask EGL for an sRGB-tagged surface as well; harmless where the surface is already sRGB.
+    eglSurfaceAttrib(display_, surface_, EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_SRGB_KHR);
 
     if (eglMakeCurrent(display_, surface_, surface_, context_) != EGL_TRUE) {
         OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG, "eglMakeCurrent failed");
