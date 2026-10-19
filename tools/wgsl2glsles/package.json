@@ -1,0 +1,13 @@
+{
+  "name": "shaderport-wgsl2glsles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WGSL to GLSL ES 3.00 conversion for shaderport, powered by naga-wasm.",
+  "scripts": {
+    "convert": "node run.mjs"
+  },
+  "dependencies": {
+    "naga-wasm": "30.2.0"
+  }
+}
