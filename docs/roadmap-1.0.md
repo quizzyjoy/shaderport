@@ -64,6 +64,8 @@
 
 **首批状态**：17 个全部通过设备像素验证（`Aurora` 之前的 alpha 差异确认是输入值不一致，不是 EGL 预乘问题；统一使用 `spec.resolved` 后 max ≤ 1）。
 
+**交互与窗口**：touch / hover / mouse 已归一化为 `uPointer` 并送到 native；覆盖层使用 `HitTestMode.Transparent`，XComponent 仍能收到事件。折叠屏展开/折叠实测触发 `resize 2224×2288 ↔ 1080×2296`，RTT 纹理自动重建，2-pass 效果（Glow）在两种尺寸下均正常渲染。
+
 > 已落地：`spec.resolved` 现在由 `tools/export-wgsl` 从上游 uniform store 导出**最终值**（颜色在 P3-linear 工作空间、位置已完成 Y 翻转、枚举已编码、色标数组已打包）。导出器还会执行一次 `ir.onBeforeRender`，把每帧 CPU 生成的 extraFields（`meshAnchors` / `convA..D`）写回 store 并写入 resolved；native/JS 打包器优先使用 resolved，数组按 `GL_UNIFORM_ARRAY_STRIDE` 写入。
 >
 > 已知限制：`meshAnchors` 依赖 aspect，烘焙时用的是 **1:1**（与参考图一致）。其他宽高比下会沿用同一组锚点，观感与上游的"每帧按实际 aspect 重算"略有差异，但跨端一致。
