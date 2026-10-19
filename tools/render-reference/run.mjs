@@ -68,6 +68,39 @@ if (items.length === 0) {
     process.exit(1)
 }
 
+// Optional diff mode:
+//   node tools/render-reference/run.mjs --capture <capture-<id>.rgba>
+// The capture file is <uint32 width><uint32 height><RGBA...> from nativeCapture().
+const args = process.argv.slice(2)
+const captureIndex = args.indexOf('--capture')
+const capturePath = captureIndex >= 0 ? args[captureIndex + 1] : null
+let capture = null
+
+if (capturePath) {
+    const raw = readFileSync(capturePath)
+    const width = raw.readUInt32LE(0)
+    const height = raw.readUInt32LE(4)
+    const bytes = raw.subarray(8)
+    const match = (capturePath.split(/[\\/]/).pop() ?? '').match(/capture-(.+)\.rgba$/)
+    const id = match ? match[1] : null
+    if (!id) {
+        console.error(`[render-reference] cannot infer effect id from ${capturePath}`)
+        process.exit(2)
+    }
+    const target = items.find((it) => it.id === id)
+    if (!target) {
+        console.error(`[render-reference] no effect package for '${id}'`)
+        process.exit(2)
+    }
+    if (bytes.length !== width * height * 4) {
+        console.error(`[render-reference] capture size mismatch: ${bytes.length} != ${width * height * 4}`)
+        process.exit(2)
+    }
+    capture = {id, width, height, base64: bytes.toString('base64')}
+    items.length = 0
+    items.push({...target, width, height, time: target.spec.reference?.time ?? 1.0})
+}
+
 const makeVertexShader = (fragmentSource) => {
     const inputs = [...fragmentSource.matchAll(/^\s*(?:smooth|flat|noperspective)?\s*in\s+(float|vec[234])\s+([A-Za-z_]\w*)\s*;/gm)]
     const outs = inputs.map(([, type, name]) => `smooth out ${type} ${name};`).join('\n')
@@ -100,6 +133,7 @@ const payload = items.map((it) => ({
     time: it.time,
     ubo: it.spec.ubo,
     defaults: it.spec.defaults,
+    compare: capture ? capture.base64 : null,
 }))
 
 const browser = await puppeteer.launch({
@@ -311,12 +345,44 @@ try {
                 if (lum > 2) nonBlack++
             }
 
+            let diff = null
+            if (item.compare) {
+                const binary = atob(item.compare)
+                if (binary.length !== pixels.length) {
+                    diff = {error: `size mismatch: reference=${pixels.length} capture=${binary.length}`}
+                } else {
+                    const total = pixels.length / 4
+                    let diffSum = 0
+                    let diffMax = 0
+                    let over8 = 0
+                    let over16 = 0
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const dr = Math.abs(pixels[i] - binary.charCodeAt(i))
+                        const dg = Math.abs(pixels[i + 1] - binary.charCodeAt(i + 1))
+                        const db = Math.abs(pixels[i + 2] - binary.charCodeAt(i + 2))
+                        const d = Math.max(dr, dg, db)
+                        diffSum += (dr + dg + db) / 3
+                        if (d > diffMax) diffMax = d
+                        if (d > 8) over8++
+                        if (d > 16) over16++
+                    }
+                    diff = {
+                        meanAbs: diffSum / total,
+                        maxAbs: diffMax,
+                        over8Ratio: over8 / total,
+                        over16Ratio: over16 / total,
+                        pixels: total,
+                    }
+                }
+            }
+
             out.push({
                 id: item.id,
                 png: canvas.toDataURL('image/png'),
                 blockSize,
                 members,
                 missing,
+                diff,
                 stats: {
                     min,
                     max,
@@ -341,6 +407,25 @@ let written = 0
 for (const result of results.items) {
     if (result.error) {
         console.error(`[render-reference] ${result.id}: ${result.error}`)
+        continue
+    }
+    if (capture) {
+        const diffPath = join(repoRoot, 'build', 'diff', `${result.id}.json`)
+        mkdirSync(dirname(diffPath), {recursive: true})
+        writeFileSync(diffPath, JSON.stringify({id: result.id, capture: capturePath, ...result.diff}, null, 2))
+        if (result.diff.error) {
+            console.error(`[render-reference] diff ${result.id}: ${result.diff.error}`)
+            process.exitCode = 1
+        } else {
+            console.log(
+                `[render-reference] diff ${result.id}: meanAbs=${result.diff.meanAbs.toFixed(2)} ` +
+                    `max=${result.diff.maxAbs} over8=${(result.diff.over8Ratio * 100).toFixed(2)}% ` +
+                    `over16=${(result.diff.over16Ratio * 100).toFixed(2)}% (${capture.width}x${capture.height})`,
+            )
+            if (result.diff.over8Ratio > 0.05) {
+                process.exitCode = 1
+            }
+        }
         continue
     }
     const base64 = result.png.replace(/^data:image\/png;base64,/, '')
