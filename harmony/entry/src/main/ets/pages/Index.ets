@@ -7,6 +7,7 @@ import {
   nativeResize,
   nativeSetEffect,
   nativeSetParam,
+  nativeSetPointer,
   nativeSetTime,
 } from 'libentry.so';
 import {
@@ -29,6 +30,8 @@ struct Index {
   private started: boolean = false;
   private filesDir: string = '';
   private autoIndex: number = 0;
+  private viewWidth: number = 1;
+  private viewHeight: number = 1;
 
   aboutToAppear(): void {
     initShaderPort(getContext(this).resourceManager);
@@ -96,6 +99,12 @@ struct Index {
     setTimeout(() => this.applyNext(), 1800);
   }
 
+  private pushPointer(x: number, y: number, active: number): void {
+    const nx: number = Math.max(0, Math.min(1, x / this.viewWidth));
+    const ny: number = Math.max(0, Math.min(1, y / this.viewHeight));
+    nativeSetPointer(nx, ny, active);
+  }
+
   private start(surfaceId: string): void {
     if (this.started) {
       return;
@@ -121,11 +130,29 @@ struct Index {
           this.start(this.controller.getXComponentSurfaceId());
         })
         .onAreaChange((_oldValue: Area, newValue: Area) => {
-          const width: number = vp2px(Number(newValue.width));
-          const height: number = vp2px(Number(newValue.height));
-          if (width > 0 && height > 0) {
-            nativeResize(width, height);
+          const viewWidth: number = Number(newValue.width);
+          const viewHeight: number = Number(newValue.height);
+          if (viewWidth > 0 && viewHeight > 0) {
+            this.viewWidth = viewWidth;
+            this.viewHeight = viewHeight;
+            nativeResize(vp2px(viewWidth), vp2px(viewHeight));
           }
+        })
+        .onTouch((event: TouchEvent) => {
+          if (event.touches.length > 0) {
+            const touch: TouchObject = event.touches[0];
+            const active: number =
+              event.type === TouchType.Down || event.type === TouchType.Move ? 1 : 0;
+            this.pushPointer(touch.x, touch.y, active);
+          }
+        })
+        .onHover((isHover: boolean, event: HoverEvent) => {
+          this.pushPointer(event.x ?? 0, event.y ?? 0, isHover ? 1 : 0);
+        })
+        .onMouse((event: MouseEvent) => {
+          const active: number =
+            event.action === MouseAction.Press || event.action === MouseAction.Move ? 1 : 0;
+          this.pushPointer(event.x ?? 0, event.y ?? 0, active);
         })
         .width('100%')
         .height('100%')
@@ -157,6 +184,9 @@ struct Index {
       .height('100%')
       .justifyContent(FlexAlign.SpaceBetween)
       .alignItems(HorizontalAlign.Start)
+      // Overlay participates in hit testing (buttons work) and lets the XComponent underneath
+      // receive the same touch/pointer events.
+      .hitTestBehavior(HitTestMode.Transparent)
     }
     .width('100%')
     .height('100%')

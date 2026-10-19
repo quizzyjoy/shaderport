@@ -160,9 +160,14 @@ void EffectRenderer::SetParam(const std::string &name, const std::vector<float> 
 
 void EffectRenderer::SetPointer(float x, float y, float active) {
     std::lock_guard<std::mutex> lock(mutex_);
-    pointerX_ = x;
-    pointerY_ = y;
+    const bool wasActive = pointerActive_ > 0.5f;
+    pointerX_ = x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x);
+    pointerY_ = y < 0.0f ? 0.0f : (y > 1.0f ? 1.0f : y);
     pointerActive_ = active;
+    if (!wasActive && active > 0.5f) {
+        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "pointer down %{public}f,%{public}f",
+                     pointerX_, pointerY_);
+    }
 }
 
 void EffectRenderer::SetFixedTime(double time, bool fixed) {
@@ -181,6 +186,7 @@ void EffectRenderer::RequestCapture(const std::string &path) {
 void EffectRenderer::Resize(int width, int height) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (width > 0 && height > 0) {
+        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "resize %{public}dx%{public}d", width, height);
         width_ = width;
         height_ = height;
     }
