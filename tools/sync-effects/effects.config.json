@@ -1,0 +1,26 @@
+[
+  {
+    "name": "SolidColor",
+    "id": "solid-color",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "LinearGradient",
+    "id": "linear-gradient",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "RadialGradient",
+    "id": "radial-gradient",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "Plasma",
+    "id": "plasma",
+    "layer": "main",
+    "cost": "medium"
+  }
+]

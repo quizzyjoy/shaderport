@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "upstream": {
+    "repository": "shader-effects-inc/shaders",
+    "version": "v4.0.4"
+  },
+  "effects": [
+    {
+      "id": "solid-color",
+      "name": "SolidColor",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/solid-color"
+    },
+    {
+      "id": "linear-gradient",
+      "name": "LinearGradient",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/linear-gradient"
+    },
+    {
+      "id": "radial-gradient",
+      "name": "RadialGradient",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/radial-gradient"
+    },
+    {
+      "id": "plasma",
+      "name": "Plasma",
+      "category": "Textures",
+      "layer": "main",
+      "cost": "medium",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/plasma"
+    }
+  ]
+}

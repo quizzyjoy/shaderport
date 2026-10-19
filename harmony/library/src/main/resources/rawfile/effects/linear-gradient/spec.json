@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "id": "linear-gradient",
+  "name": "LinearGradient",
+  "category": "Textures",
+  "layer": "background",
+  "cost": "very-low",
+  "role": "generator",
+  "precision": "highp",
+  "glslVersion": "300 es",
+  "requires": [],
+  "ubo": {
+    "block": "combined_block_0Fragment",
+    "instance": "_group_0_binding_0_fs",
+    "node": "n",
+    "baseNode": null
+  },
+  "color": {
+    "input": "srgb",
+    "working": "linear-srgb",
+    "output": "srgb-encoded",
+    "alpha": "straight",
+    "note": "final pass already applies the sRGB OETF; do not encode again"
+  },
+  "passes": [
+    {
+      "index": 0,
+      "key": "final",
+      "file": "passes/final.glsl",
+      "entry": "final_1",
+      "samplers": []
+    }
+  ],
+  "props": {
+    "colorA": {
+      "default": "#1aff00",
+      "description": "The starting color of the gradient",
+      "ui": {
+        "type": "color",
+        "label": "Color A",
+        "group": "Colors"
+      }
+    },
+    "colorB": {
+      "default": "#0000ff",
+      "description": "The ending color of the gradient",
+      "ui": {
+        "type": "color",
+        "label": "Color B",
+        "group": "Colors"
+      }
+    },
+    "stops": {
+      "default": null,
+      "description": "Multi-stop gradient colors (overrides Color A / Color B when set)",
+      "ui": {
+        "type": "gradient-stops",
+        "label": "Colors",
+        "group": "Colors"
+      }
+    },
+    "start": {
+      "default": {
+        "x": 0,
+        "y": 0.5
+      },
+      "description": "The starting point of the gradient",
+      "ui": {
+        "type": "position",
+        "label": "Start",
+        "group": "Position"
+      }
+    },
+    "end": {
+      "default": {
+        "x": 1,
+        "y": 0.5
+      },
+      "description": "The ending point of the gradient",
+      "ui": {
+        "type": "position",
+        "label": "End",
+        "group": "Position"
+      }
+    },
+    "angle": {
+      "default": 0,
+      "description": "Additional rotation angle of the gradient (in degrees)",
+      "ui": {
+        "type": [
+          "range",
+          "map"
+        ],
+        "min": 0,
+        "max": 360,
+        "step": 1,
+        "label": "Angle",
+        "group": "Effect"
+      }
+    },
+    "edges": {
+      "default": "stretch",
+      "description": "How to handle areas beyond the gradient endpoints",
+      "ui": {
+        "type": "select",
+        "options": [
+          {
+            "label": "Stretch",
+            "value": "stretch"
+          },
+          {
+            "label": "Transparent",
+            "value": "transparent"
+          },
+          {
+            "label": "Mirror",
+            "value": "mirror"
+          },
+          {
+            "label": "Wrap",
+            "value": "wrap"
+          }
+        ],
+        "label": "Edges",
+        "group": "Effect"
+      }
+    },
+    "colorSpace": {
+      "default": "linear",
+      "description": "Color space for color interpolation",
+      "ui": {
+        "type": "select",
+        "options": [
+          {
+            "label": "Linear RGB",
+            "value": "linear"
+          },
+          {
+            "label": "OKLCh",
+            "value": "oklch"
+          },
+          {
+            "label": "OKLAB",
+            "value": "oklab"
+          },
+          {
+            "label": "HSL",
+            "value": "hsl"
+          },
+          {
+            "label": "HSV",
+            "value": "hsv"
+          },
+          {
+            "label": "LCH",
+            "value": "lch"
+          }
+        ],
+        "label": "Color Space",
+        "group": "Colors"
+      }
+    }
+  },
+  "defaults": {
+    "colorA": "#1aff00",
+    "colorB": "#0000ff",
+    "stops": null,
+    "start": {
+      "x": 0,
+      "y": 0.5
+    },
+    "end": {
+      "x": 1,
+      "y": 0.5
+    },
+    "angle": 0,
+    "edges": "stretch",
+    "colorSpace": "linear"
+  },
+  "reference": null,
+  "provenance": {
+    "class": "ported",
+    "repo": "shader-effects-inc/shaders",
+    "version": "v4.0.4",
+    "path": "packages/core/src/shaders/LinearGradient/index.ts",
+    "license": "MIT",
+    "copyright": "© 2026 Shader Effects Inc."
+  }
+}

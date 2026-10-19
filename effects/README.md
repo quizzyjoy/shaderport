@@ -4,17 +4,22 @@
 
 ```
 effects/<name>/
-├── spec.md          # 规格：用途层、uniform、成本、驱动要求
-├── shader.glsl      # GLSL ES 3.00 源码（片元 + 顶点，或分开）
-└── reference.png    # 参考图（固定参数、固定分辨率的渲染结果）
+├── spec.json          # 规格（SSOT）：用途层、UBO、参数、成本、溯源
+├── passes/<key>.glsl  # GLSL ES 3.00 片元；单 pass 时为 passes/final.glsl
+└── reference.png      # 参考图（固定参数、固定分辨率的渲染结果）
 ```
+
+- **`spec.json` 是唯一源**，`spec.md` 由它生成（不再手写）；字段说明见下方模板。
+- **多 pass**：按 `spec.passes` 的 `index` 顺序渲染，最后一项是 final；文件一律是**片元着色器**，全屏顶点着色器由宿主提供（`#version 300 es`，varying 名与片元一致）。
+- **口径**：所有 pass 的输出**已包含 sRGB OETF**（见 `spec.color`），宿主不得再次编码；中间 RTT 为 premultiplied alpha，final 前需 unpremultiply。
+- `spec.json` / `passes/` 由 `tools/sync-effects` 生成；`reference.png` 由参考渲染器生成，**不手改**。
 
 ## 命名
 
 - 目录名与效果名：**小写 + 连字符**（如 `mesh-gradient`、`contour-lines`、`dot-grid`），与上游组件名解耦（便于各自演进）。
 - 同一效果的不同实现变体加后缀：`mesh-gradient.gles`、`mesh-gradient.webgl2`（仅在确实需要时）。
 
-## 规格模板
+## 规格模板（`spec.md` 由 `spec.json` 生成；v0.1 暂只提交 `spec.json`）
 
 ```markdown
 # <效果名>（<English Name>）
