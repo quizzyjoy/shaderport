@@ -1,0 +1,81 @@
+export interface EffectSummary {
+  id: string;
+  name: string;
+  category: string;
+  layer: string;
+  cost: string;
+  passes: number;
+  requires: string[];
+  path: string;
+}
+
+export interface EffectIndex {
+  schema: number;
+  upstream: ESObject;
+  effects: EffectSummary[];
+}
+
+export interface EffectPass {
+  index: number;
+  key: string;
+  file: string;
+  entry: string;
+  samplers: string[];
+}
+
+export interface EffectUbo {
+  block: string;
+  instance: string;
+  node: string;
+  baseNode: string | null;
+}
+
+export interface EffectColor {
+  input: string;
+  working: string;
+  output: string;
+  alpha: string;
+  note?: string;
+}
+
+export interface EffectReference {
+  file: string;
+  width: number;
+  height: number;
+  time: number;
+}
+
+export interface PropSpec {
+  default: ESObject;
+  description?: string;
+  ui?: ESObject;
+}
+
+export interface EffectSpec {
+  schema: number;
+  id: string;
+  name: string;
+  category: string;
+  layer: string;
+  cost: string;
+  role: string;
+  precision: string;
+  glslVersion: string;
+  requires: string[];
+  ubo: EffectUbo;
+  color: EffectColor;
+  passes: EffectPass[];
+  props: Record<string, PropSpec>;
+  defaults: Record<string, ESObject>;
+  reference: EffectReference;
+}
+
+export interface ParamValue {
+  name: string;
+  values: number[];
+}
+
+export interface ValidationResult {
+  ok: boolean;
+  errors: string[];
+}
