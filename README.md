@@ -24,6 +24,14 @@
 - **多 pass**：RTT ping-pong（Blur / Glow / CursorRipples）
 - **可验证**：模拟器 48/48 逐像素通过；真机差异有记录（见设备矩阵）
 
+## 真机效果
+
+> Mate 80（VYG-AL30，HarmonyOS 7.0）实拍。示例工程：[`harmony/`](https://github.com/quizzyjoy/shaderport/tree/main/harmony)
+
+| 主界面（参数面板展开） | 隐藏参数面板 | 隐藏性能信息 |
+|---|---|---|
+| ![主界面](./harmony/docs/screenshots/mate-main.jpg) | ![隐藏面板](./harmony/docs/screenshots/mate-panel-hidden.jpg) | ![隐藏性能](./harmony/docs/screenshots/mate-perf-hidden.jpg) |
+
 ## 环境要求
 
 | 项 | 要求 |
@@ -144,10 +152,12 @@ Mate 80（1280×2598）实测，完整表见 [`docs/device-matrix.md`](./docs/de
 
 ## 文档
 
+- 📘 **[使用教程（从零接入）](./docs/usage-guide.md)** ← 安装 → native 渲染器 → 参数面板 → 抓帧校验 → FAQ
 - [效果规格格式（spec.json）](./docs/spec-format.md)
 - [转换与验证指南](./docs/conversion-guide.md)
 - [设备矩阵与验证记录](./docs/device-matrix.md)
-- [HarmonyOS 示例工程](./harmony/README.md)
+- [HarmonyOS 示例工程](./harmony/README.md) · [示例工程 README（demo 教程）](./harmony/entry/README.md)
+- [包 README（API / 渲染契约）](./harmony/library/README.md)
 - [签名与凭据管理](./docs/signing.md)
 - [1.0 路线图](./docs/roadmap-1.0.md)
 - [溯源与命名政策](./docs/provenance-and-naming.md)

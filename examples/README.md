@@ -1,6 +1,10 @@
 # 示例（examples）
 
-计划收录的集成示例，每个示例一个目录，自带 README 说明"怎么跑、验证什么"。
+> **当前可运行的完整示例**：[`harmony/`](../harmony) —— `entry` demo App（ArkTS + native GLES 3.0 渲染器）+ `library` HAR，
+> 覆盖 48 个效果、spec 驱动参数面板、Scale 档位与真机截图。
+> 使用教程见 [`docs/usage-guide.md`](../docs/usage-guide.md)。
+
+下面这些是**计划中**的独立最小示例（每个只演示一件事），目录尚未创建：
 
 | 示例 | 目标 | 验证内容 |
 |---|---|---|

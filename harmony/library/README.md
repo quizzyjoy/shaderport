@@ -2,12 +2,14 @@
 
 > **Portable GPU effects for OpenGL ES 3.0** — 48 个可在 GLES 3.0 运行的效果资产，附规格、参考图与离线 WGSL → GLSL ES 3.00 工具链。
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/quizzyjoy/shaderport/blob/main/LICENSE)
 ![Status](https://img.shields.io/badge/status-0.1.0%20beta%20%C2%B7%2048%20effects-blue)
 ![GLES](https://img.shields.io/badge/OpenGL%20ES-3.0-green)
+![HarmonyOS](https://img.shields.io/badge/HarmonyOS-API%2012%2B-orange)
 
 > **主仓（source of truth）**：[GitHub `quizzyjoy/shaderport`](https://github.com/quizzyjoy/shaderport)。
 > GitCode / Gitee 上的同名仓库为**只读镜像**；**issue 与 PR 请提交到 GitHub**。
+> 本 README 同时作为 **ohpm 包页面**展示，所有外链均为绝对地址。
 
 ## 简介
 
@@ -76,9 +78,13 @@ const encoded = encodeParam('plasma', 'intensity', 2.0)
 nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
 ```
 
+> 📘 **完整端到端教程**（含 native 渲染器骨架、UBO 打包、多 pass、抓帧校验、FAQ）：
+> **[使用教程 · docs/usage-guide.md](https://github.com/quizzyjoy/shaderport/blob/main/docs/usage-guide.md)**
+
 ## 渲染契约（native 侧必须做什么）
 
-宿主需要自己实现一个 GLES 3.0 渲染器。最小骨架见 [`harmony/entry/src/main/cpp`](./harmony/entry/src/main/cpp)。
+宿主需要自己实现一个 GLES 3.0 渲染器。最小骨架见
+[`harmony/entry/src/main/cpp`](https://github.com/quizzyjoy/shaderport/tree/main/harmony/entry/src/main/cpp)（约 700 行）。
 
 | 事项 | 约定 |
 |---|---|
@@ -107,7 +113,22 @@ nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
 | `encodeParam(id, name, value)` | UI 值 → UBO 路径 + 数值 | `ParamValue` |
 | `validateParams(id, params)` | 参数校验 | `{ ok, errors }` |
 
-完整字段说明见 [`docs/spec-format.md`](./docs/spec-format.md)。
+完整字段说明见 [spec 格式](https://github.com/quizzyjoy/shaderport/blob/main/docs/spec-format.md)。
+
+## 包内容
+
+```
+@quizzyjoy/shaderport (HAR)
+├── Index.ets                     导出 9 个 API + 12 个类型
+├── src/main/ets/                 api.ets / types.ets（纯逻辑，无 .so）
+└── src/main/resources/rawfile/
+    └── effects/<id>/
+        ├── spec.json             规格 + 最终 uniform + 参数 UI + 溯源
+        ├── passes/*.glsl         GLSL ES 3.00（按 index 顺序）
+        └── reference.png         参考图（与 demo 抓帧逐像素对比）
+```
+
+> 体积以实际 HAR 为准（48 个效果含参考图）；参考图仅用于验证，不参与渲染。
 
 ## 效果目录（48）
 
@@ -125,7 +146,8 @@ nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
 
 ## 性能
 
-Mate 80（1280×2598）实测，完整表见 [`docs/device-matrix.md`](./docs/device-matrix.md)：
+Mate 80（1280×2598）实测，完整表见
+[设备矩阵](https://github.com/quizzyjoy/shaderport/blob/main/docs/device-matrix.md)：
 
 - 纯色 / 轻渐变：**120 fps**
 - Plasma / PerlinNoise / Aurora：**~60 fps**
@@ -142,15 +164,30 @@ Mate 80（1280×2598）实测，完整表见 [`docs/device-matrix.md`](./docs/de
 - `meshAnchors` 在导出时按 1:1 aspect 烘焙，非 1:1 下跨端一致但与上游"每帧按实际 aspect 重算"略有差异；
 - 真机（Maleoon GPU）与参考渲染器存在驱动精度差异（纯色 ~7/255），属 GPU 精度而非管线错误。
 
+## 常见问题（FAQ）
+
+| 问题 | 处理 |
+|---|---|
+| 整图发灰 | 做了两次 sRGB 编码——final pass 自带 OETF，去掉你的 gamma；RTT 中间纹理用 `RGBA16F` |
+| 黑屏且无报错 | 查 `glGetShaderInfoLog` / `glGetProgramInfoLog`；确认 final 是最后一个 pass |
+| 参数无效 | 必须用 `encodeParam` 返回的 `name`（`n_n.*`），不要自己拼 |
+| 数组参数错位 | 用 `GL_UNIFORM_ARRAY_STRIDE`（`vec3[]` 每元素 16 字节） |
+| 折叠屏/旋转后拉伸 | `onAreaChange` 的 resize 要传到 native；Scale 档位下不要改 viewport |
+| 想先跑通再集成 | 直接用 [示例工程](https://github.com/quizzyjoy/shaderport/tree/main/harmony) |
+
 ## 文档
 
-- [效果规格格式（spec.json）](./docs/spec-format.md)
-- [转换与验证指南](./docs/conversion-guide.md)
-- [设备矩阵与验证记录](./docs/device-matrix.md)
-- [HarmonyOS 示例工程](./harmony/README.md)
-- [签名与凭据管理](./docs/signing.md)
-- [1.0 路线图](./docs/roadmap-1.0.md)
-- [溯源与命名政策](./docs/provenance-and-naming.md)
+| 文档 | 内容 |
+|---|---|
+| [使用教程](https://github.com/quizzyjoy/shaderport/blob/main/docs/usage-guide.md) | **从零接入**：安装 → native 渲染器 → 参数面板 → 抓帧校验 → FAQ |
+| [效果规格格式](https://github.com/quizzyjoy/shaderport/blob/main/docs/spec-format.md) | `spec.json` 全字段（props / passes / resolved / validation / provenance） |
+| [转换与验证指南](https://github.com/quizzyjoy/shaderport/blob/main/docs/conversion-guide.md) | WGSL → GLSL ES 3.00 的导出、转换、门禁、漂移检查 |
+| [设备矩阵](https://github.com/quizzyjoy/shaderport/blob/main/docs/device-matrix.md) | 真机机型 / GPU / 帧率 / 精度差异 |
+| [示例工程](https://github.com/quizzyjoy/shaderport/blob/main/harmony) | DevEco 工程：`entry` demo + `library` HAR，含真机截图 |
+| [示例工程 README](https://github.com/quizzyjoy/shaderport/blob/main/harmony/entry/README.md) | demo 使用教程与 native 结构 |
+| [签名与凭据管理](https://github.com/quizzyjoy/shaderport/blob/main/docs/signing.md) | 本地签名不入库的约定 |
+| [1.0 路线图](https://github.com/quizzyjoy/shaderport/blob/main/docs/roadmap-1.0.md) | 后续效果与能力规划 |
+| [溯源与命名政策](https://github.com/quizzyjoy/shaderport/blob/main/docs/provenance-and-naming.md) | 与上游关系、三分法、禁用表述 |
 
 ## 目录结构
 
@@ -159,17 +196,27 @@ shaderport/
 ├── effects/                 效果包（spec + passes + reference）
 ├── tools/                   export / naga / gate / sync / render-reference
 ├── harmony/                 DevEco 工程（library HAR + entry demo）
-├── docs/                    规格、指南、设备矩阵、路线图
+│   ├── library/             ★ 本包（@quizzyjoy/shaderport）
+│   ├── entry/               示例 App（含 native 渲染器）
+│   └── docs/screenshots/    真机截图
+├── docs/                    规格、教程、指南、设备矩阵、路线图
 ├── .github/workflows/       Node 侧 CI（导出/转换/门禁/漂移检查）
 ├── LICENSE / NOTICE / THIRD_PARTY_NOTICES.md
 └── README.md / CHANGELOG.md / CONTRIBUTING.md
 ```
 
+## 版本与变更
+
+- 当前版本：**0.1.0**（48 效果 · API 冻结候选）
+- 变更记录：[CHANGELOG.md](https://github.com/quizzyjoy/shaderport/blob/main/harmony/library/CHANGELOG.md)
+- 语义化版本：`0.x` 阶段接口可能微调，`1.0` 起承诺向后兼容。
+
 ## 与上游的关系
 
 > 本项目是完全独立的第三方项目，不是 `shader-effects-inc/shaders` 的官方移植、不是其 fork，也未获其背书。
 >
-> 48 个效果由上游 WGSL 自动转译为 GLSL ES 3.00（`ported`），每个文件保留 MIT 声明；逐条来源见 `spec.json` 的 `provenance` 与 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
+> 48 个效果由上游 WGSL 自动转译为 GLSL ES 3.00（`ported`），每个文件保留 MIT 声明；逐条来源见 `spec.json` 的 `provenance` 与
+> [THIRD_PARTY_NOTICES.md](https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md)。
 
 ## 主体与联系
 
@@ -183,5 +230,5 @@ shaderport/
 
 ## 开源协议
 
-[Apache-2.0](./LICENSE) © 2026 河南趣知易解互联网科技有限公司（QuizzyJoy）
-第三方内容按其原许可使用，详见 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
+[Apache-2.0](https://github.com/quizzyjoy/shaderport/blob/main/LICENSE) © 2026 河南趣知易解互联网科技有限公司（QuizzyJoy）
+第三方内容按其原许可使用，详见 [THIRD_PARTY_NOTICES.md](https://github.com/quizzyjoy/shaderport/blob/main/THIRD_PARTY_NOTICES.md)。
