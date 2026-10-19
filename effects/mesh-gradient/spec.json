@@ -4,7 +4,7 @@
   "name": "MeshGradient",
   "category": "Textures",
   "layer": "background",
-  "cost": "low",
+  "cost": "high",
   "role": "generator",
   "precision": "highp",
   "glslVersion": "300 es",

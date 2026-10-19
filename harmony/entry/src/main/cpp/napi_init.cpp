@@ -192,6 +192,14 @@ napi_value NativeResize(napi_env env, napi_callback_info info) {
     return MakeUndefined(env);
 }
 
+napi_value NativeGetStats(napi_env env, napi_callback_info info) {
+    (void)info;
+    const std::string stats = EffectRenderer::Get().StatsText();
+    napi_value result = nullptr;
+    napi_create_string_utf8(env, stats.c_str(), stats.size(), &result);
+    return result;
+}
+
 napi_value NativeDispose(napi_env env, napi_callback_info info) {
     (void)env;
     (void)info;
@@ -212,6 +220,7 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"nativeSetTime", nullptr, NativeSetTime, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeCapture", nullptr, NativeCapture, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeCaptureReady", nullptr, NativeCaptureReady, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"nativeGetStats", nullptr, NativeGetStats, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeResize", nullptr, NativeResize, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeDispose", nullptr, NativeDispose, nullptr, nullptr, nullptr, napi_default, nullptr},
     };

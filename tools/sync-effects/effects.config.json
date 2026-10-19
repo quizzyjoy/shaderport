@@ -82,13 +82,13 @@
     "name": "MeshGradient",
     "id": "mesh-gradient",
     "layer": "background",
-    "cost": "low"
+    "cost": "high"
   },
   {
     "name": "FlowingGradient",
     "id": "flowing-gradient",
     "layer": "background",
-    "cost": "low"
+    "cost": "medium"
   },
   {
     "name": "Aurora",

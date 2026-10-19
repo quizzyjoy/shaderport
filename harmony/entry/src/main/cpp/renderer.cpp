@@ -222,6 +222,10 @@ void EffectRenderer::OnFrame(long long timestamp) {
         if (firstTimestamp_ == 0) {
             firstTimestamp_ = timestamp;
         }
+        const double frameSeconds =
+            lastFrameTimestamp_ == 0 ? 0.0 : static_cast<double>(timestamp - lastFrameTimestamp_) / 1e9;
+        lastFrameTimestamp_ = timestamp;
+
         const double time = useFixedTime_ ? fixedTime_
                                          : static_cast<double>(timestamp - firstTimestamp_) / 1e9;
         if (hasPendingShader_) {
@@ -229,7 +233,18 @@ void EffectRenderer::OnFrame(long long timestamp) {
             hasPendingShader_ = false;
         }
         if (!programs_.empty()) {
+            const auto renderStart = std::chrono::steady_clock::now();
             PackAndDraw(time);
+            const auto renderEnd = std::chrono::steady_clock::now();
+            const double cpuMs =
+                std::chrono::duration<double, std::milli>(renderEnd - renderStart).count();
+
+            if (frameSeconds > 0.0001) {
+                const double instantFps = 1.0 / frameSeconds;
+                fps_ = fps_ == 0.0 ? instantFps : fps_ * 0.9 + instantFps * 0.1;
+                cpuMs_ = cpuMs_ == 0.0 ? cpuMs : cpuMs_ * 0.9 + cpuMs * 0.1;
+            }
+
             if (captureRequested_ && !capturePath_.empty()) {
                 CaptureFrame();
             }
@@ -609,6 +624,13 @@ void EffectRenderer::CaptureFrame() {
     }
     captureRequested_ = false;
     captureReady_.store(true);
+}
+
+std::string EffectRenderer::StatsText() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    char buffer[64] = {0};
+    std::snprintf(buffer, sizeof(buffer), "%.1f|%.2f", fps_, cpuMs_);
+    return std::string(buffer);
 }
 
 void EffectRenderer::Dispose() {

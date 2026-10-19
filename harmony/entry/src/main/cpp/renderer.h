@@ -47,6 +47,8 @@ public:
     bool CaptureReady() const { return captureReady_.load(); }
     void Resize(int width, int height);
     void Dispose();
+    /** "fps|cpuMs" — display-limited FPS and the EMA of the CPU submit time. */
+    std::string StatsText();
 
 private:
     EffectRenderer() = default;
@@ -109,6 +111,9 @@ private:
     bool running_ = false;
     bool initialized_ = false;
     long long firstTimestamp_ = 0;
+    long long lastFrameTimestamp_ = 0;
+    double fps_ = 0.0;
+    double cpuMs_ = 0.0;
 };
 
 #endif  // SHADERPORT_RENDERER_H

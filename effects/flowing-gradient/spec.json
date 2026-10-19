@@ -4,7 +4,7 @@
   "name": "FlowingGradient",
   "category": "Textures",
   "layer": "background",
-  "cost": "low",
+  "cost": "medium",
   "role": "generator",
   "precision": "highp",
   "glslVersion": "300 es",

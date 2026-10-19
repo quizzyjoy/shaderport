@@ -58,7 +58,31 @@
 | 尺寸变化 | fold close/open → `resize 1080x2296 ↔ 2224x2288`，RTT 重建正常 |
 | 参数面板 | spec 驱动 slider / color / select / position / boolean，实时生效 |
 
-## 4. 尚未测量
+## 4. 性能实测（Mate 80 / VYG-AL30，1280×2598）
+
+方法：native 每帧用 vsync 间隔计算 FPS（EMA），并测量 `PackAndDraw` 的 CPU 提交时间；demo 顶部 overlay 显示，`uitest dumpLayout` 读取文本。
+
+| 效果 | FPS | CPU ms | 原 cost | 校准后 |
+|---|---|---|---|---|
+| SolidColor | 120.5 | 1.16 | very-low | very-low |
+| LinearGradient | 109.1 | 1.12 | very-low | very-low |
+| RadialGradient | 120.5 | 2.94 | very-low | very-low |
+| Plasma | 60.2 | 1.65 | medium | medium |
+| PerlinNoise | 60.8 | 1.33 | low | low |
+| Blur（2 pass） | 57.6 | 2.41 | medium | medium |
+| Glow（2 pass） | 56.8 | 2.46 | medium | medium |
+| Aurora | 60.2 | 1.47 | medium | medium |
+| FlowingGradient | 54.2 | 1.54 | low | **medium** |
+| **MeshGradient** | **11.8** | 1.58 | low | **high** |
+
+结论：
+
+- 设备支持 120Hz；轻量效果能跑满 120，重效果落在 ~60 或更低。
+- CPU 提交时间都在 1.1–2.9 ms，**瓶颈在 GPU 填充/ALU**，不是 CPU。
+- `MeshGradient` 严重超标（11.8 fps），已把 cost 从 `low` 改为 `high`；`FlowingGradient` 改为 `medium`。
+- 背景层建议按 1/2~1/4 分辨率渲染（`MeshGradient` / `FlowingGradient` / `Aurora`），主视效层再全分辨率。
+
+## 5. 尚未测量
 
 | 项 | 说明 |
 |---|---|

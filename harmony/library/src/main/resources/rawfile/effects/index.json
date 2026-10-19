@@ -134,7 +134,7 @@
       "name": "MeshGradient",
       "category": "Textures",
       "layer": "background",
-      "cost": "low",
+      "cost": "high",
       "passes": 1,
       "requires": [],
       "path": "effects/mesh-gradient"
@@ -144,7 +144,7 @@
       "name": "FlowingGradient",
       "category": "Textures",
       "layer": "background",
-      "cost": "low",
+      "cost": "medium",
       "passes": 1,
       "requires": [],
       "path": "effects/flowing-gradient"

@@ -3,6 +3,7 @@ import {
   nativeCapture,
   nativeCaptureReady,
   nativeDispose,
+  nativeGetStats,
   nativeInit,
   nativeResize,
   nativeSetEffect,
@@ -30,8 +31,10 @@ struct Index {
   @State effects: EffectSummary[] = [];
   @State current: string = '';
   @State params: ParamDescriptor[] = [];
+  @State stats: string = '';
   private started: boolean = false;
   private filesDir: string = '';
+  private statsTimer: number = -1;
   private viewWidth: number = 1;
   private viewHeight: number = 1;
 
@@ -39,9 +42,20 @@ struct Index {
     initShaderPort(getContext(this).resourceManager);
     this.filesDir = getContext(this).filesDir;
     this.effects = listEffects();
+    this.statsTimer = setInterval(() => {
+      const raw: string = nativeGetStats();
+      const parts: string[] = raw.split('|');
+      if (parts.length === 2) {
+        this.stats = `${parts[0]} fps · ${parts[1]} ms`;
+      }
+    }, 500);
   }
 
   aboutToDisappear(): void {
+    if (this.statsTimer !== -1) {
+      clearInterval(this.statsTimer);
+      this.statsTimer = -1;
+    }
     nativeDispose();
   }
 
@@ -255,10 +269,15 @@ struct Index {
         .height('100%')
 
       Column() {
-        Text(this.status)
-          .fontSize(13)
-          .fontColor(Color.White)
-          .padding({ left: 12, right: 12, top: 8, bottom: 4 })
+        Row({ space: 12 }) {
+          Text(this.status)
+            .fontSize(13)
+            .fontColor(Color.White)
+          Text(this.stats)
+            .fontSize(12)
+            .fontColor('#CCFFFFFF')
+        }
+        .padding({ left: 12, right: 12, top: 8, bottom: 4 })
 
         Blank()
 

@@ -6,5 +6,7 @@ export const nativeSetPointer: (x: number, y: number, active: number) => void;
 export const nativeSetTime: (time: number, fixed: boolean) => void;
 export const nativeCapture: (path: string) => boolean;
 export const nativeCaptureReady: () => boolean;
+/** "fps|cpuMs" */
+export const nativeGetStats: () => string;
 export const nativeResize: (width: number, height: number) => void;
 export const nativeDispose: () => void;
