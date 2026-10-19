@@ -1,6 +1,6 @@
 # shaderport
 
-> **Portable GPU effects for OpenGL ES 3.0** — a WGSL → GLSL ES 3.00 converter plus a curated, production-tested shader effect pack.
+> **Portable GPU effects for OpenGL ES 3.0** — 48 个可在 GLES 3.0 运行的效果资产，附规格、参考图与离线 WGSL → GLSL ES 3.00 工具链。
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 ![Status](https://img.shields.io/badge/status-0.1.0%20beta%20%C2%B7%2048%20effects-blue)
@@ -11,155 +11,177 @@
 
 ## 简介
 
-`shaderport` 把一个现实问题摊开：**现代 GPU 着色器效果正被 WebGPU 垄断，而大量真实设备只有 OpenGL ES 3.0**（HarmonyOS/ArkWeb、旧 Android WebView、老设备原生 App）。本项目提供两样东西：
+现代着色器效果生态正在向 **WebGPU/WGSL** 收敛，但真实设备的可用面要窄得多：
 
-1. **转换与规范化工具** —— 把 WGSL 转成 GLSL ES 3.00，并报出目标能力的缺口（`@compute`、storage texture、浮点渲染目标等）；
-2. **效果包与规格** —— 一批可在 GLES 3.0 跑的效果（GLSL ES 源码 + 参数规格 + 参考图 + 成本档），以及把它们接进 native/Web 两侧的集成示例。
+- HarmonyOS **ArkWeb** 实测：`navigator.gpu` 存在，**`requestAdapter()` 返回 null** → WebGPU 效果完全不可用；
+- 原生 App（HarmonyOS / Android / iOS）**根本没有 WebGPU**，只有 OpenGL ES / Metal / Vulkan；
+- 大量旧 WebView 与中低端设备只有 **GLES 3.0**。
 
-设计目标是"**可被真实产品使用**"：首个落地场景是一个原生 GLES 音乐可视化 App 的背景与主视效分层，不是玩具 demo。
+`shaderport` 把上游 WebGPU 效果库（MIT）的资产转成 **GLSL ES 3.00**，以"**源码 + 规格 + 参考图**"交付，并提供离线转换工具链。它**不是** WebGPU 运行时，也**不包含渲染器**——渲染由宿主 App 的 native 层完成。
 
-**为什么不直接用 WebGPU 方案**：在 HarmonyOS ArkWeb 上实测，`navigator.gpu` 存在但 **`requestAdapter()` 返回 null** → 纯 WebGPU 的效果库在这些设备上完全不工作，且多数库没有 WebGL/GLES 回退。
+- **48 个效果**：生成器 / 形状 / warp / filter / 调整
+- **每个效果三件套**：`spec.json`（最终 uniform 值 + 参数 UI）、`passes/*.glsl`、`reference.png`
+- **多 pass**：RTT ping-pong（Blur / Glow / CursorRipples）
+- **可验证**：模拟器 48/48 逐像素通过；真机差异有记录（见设备矩阵）
 
-**定位是互补而非竞争**：上游 WebGPU 库覆盖 Web 侧；本项目覆盖 **native GLES 与 WebGPU 不可用的受限 Web**，并提供离线转换。
+## 环境要求
+
+| 项 | 要求 |
+|---|---|
+| HarmonyOS | **API 12+**（compatibleSdkVersion 5.0.0(12)） |
+| 图形 | **OpenGL ES 3.0**（`#version 300 es`）；不支持 compute |
+| ABI | arm64-v8a |
+| 宿主 | 必须提供 native 渲染器（XComponent + EGL/GLES）；**ArkTS 不能直接执行 GLES** |
+| 权限 | 无（只读取随包分发的 rawfile） |
 
 ## 安装
 
-> **状态**：0.1.0 已实现并在 HarmonyOS 模拟器上完成 48 个效果的逐像素验证，**尚未发布到 ohpm**。以下安装方式在发布后生效。
+> **状态**：0.1.0 已实现并在 HarmonyOS 模拟器完成 48 个效果验证，**尚未发布到 ohpm**。
 
 ```bash
-# HarmonyOS（ohpm 中心仓，发布后）
+# 发布后
 ohpm install @quizzyjoy/shaderport
 
-# npm（发布后，供 Web 侧示例使用）
-npm install @quizzyjoy/shaderport
+# 本地开发（HAR 源码）
+# entry/oh-package.json5:
+#   "@quizzyjoy/shaderport": "file:../library"
 ```
 
-**当前可用方式**（源码）：
-```bash
-git clone https://github.com/quizzyjoy/shaderport.git
-# 直接引用 effects/<name>/shader.glsl 与 spec.md
-```
+## 快速开始（ArkTS 侧）
 
-## 所需权限
-
-**本库不申请任何系统权限**：无网络、无存储、无定位、无麦克风/相机访问。
-
-- ArkTS 侧：仅读取随包分发的 `rawfile` 资源（GLSL 与规格 JSON）；
-- 若使用 `examples/` 中的 native 示例：需要系统图形能力（XComponent + EGL/GLES），属于系统能力调用，不是用户授权权限。
-
-## 使用示例
-
-> **状态**：以下 API 已实现（`harmony/library`）。
-
-**ArkTS 侧（取效果规格与着色器资源；渲染由宿主 native 层完成）**：
 ```ts
 import {
-  initShaderPort, listEffects, getEffect, getShaderSource,
-  getPassSources, getDefaultParams, getParamDescriptors, encodeParam,
+  initShaderPort, listEffects, getEffect, getPassSources,
+  getDefaultParams, getParamDescriptors, encodeParam,
 } from '@quizzyjoy/shaderport'
 
-// 0) 绑定宿主 resourceManager（HAR 的 rawfile 会合并进宿主资源包）
+// 1) 绑定宿主资源管理器（HAR 的 rawfile 会合并进宿主资源包）
 initShaderPort(getContext(this).resourceManager)
 
-// 1) 列出效果
+// 2) 列效果 / 取规格
 const effects = listEffects()
-// [{ id: 'plasma', layer: 'main', cost: 'medium', passes: 1, ... }]
-
-// 2) 取规格与最终 uniform 值
 const spec = getEffect('plasma')
-const defaults = getDefaultParams('plasma')   // [{ name: 'n_n.colorA', values: [...] }, ...]
 
-// 3) 取全部分 pass 的 GLSL（最后一项是 final）
-const passes = getPassSources('plasma')       // [{ fragment, block, instance }, ...]
+// 3) 取所有 pass 的 GLSL 与 UBO 绑定（最后一项是 final）
+const passes = getPassSources('plasma')
+// [{ fragment, block, instance }, ...]
 
-// 4) 参数面板
+// 4) 取最终 uniform 值，交给 native 打包
+const values = getDefaultParams('plasma')
+// [{ name: 'n_n.colorA', values: [...] }, ...]
+
+// 5) 参数面板
 const controls = getParamDescriptors('plasma')
 const encoded = encodeParam('plasma', 'intensity', 2.0)
 nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
 ```
 
-**native 侧（C++/GLES）**：见 `harmony/entry/src/main/cpp`（`renderer.cpp`）——EGL/GLES3、XComponent surface、per-pass UBO 反射、RTT ping-pong、指针与 resize。
+## 渲染契约（native 侧必须做什么）
 
-## 接口说明
+宿主需要自己实现一个 GLES 3.0 渲染器。最小骨架见 [`harmony/entry/src/main/cpp`](./harmony/entry/src/main/cpp)。
 
-公开接口（ArkTS 侧，已实现）：
+| 事项 | 约定 |
+|---|---|
+| 顶点阶段 | 宿主提供全屏 VS，varying 名 **`_vs2fs_location0`**；片元只含 `@fragment` 入口 |
+| pass 顺序 | `spec.passes` 按 `index` 升序；**最后一项绘制到屏幕**，其余进 RTT |
+| UBO | 块名 `combined_block_0Fragment`，绑定 point 0；成员路径 `n_n.*` / `n_base.*` |
+| 参数 | `getDefaultParams` 返回的是**最终值**（P3-linear 颜色、Y 翻转位置、枚举码、色标数组） |
+| 数组 | 用 `GL_UNIFORM_ARRAY_STRIDE` 按元素写入（vec3 数组有 16 字节 padding） |
+| 颜色 | **不要**再做 sRGB→linear；final pass 已经带 sRGB OETF，**不要**再次编码 |
+| alpha | 中间 RTT 为 premultiplied；final 前按 shader 的 `unpremultiplyAlpha` 处理 |
+| 运行时 uniform | `_sys.*`（time/viewport/aspect/pointer）、`_animTime`、`_opacity` 由宿主填 |
+| 指针 | `_sys.pointer` 为归一化 `[0,1]`，**y 从顶部起算** |
+| 缩放 | 可整条链渲染到低分辨率 FBO 再上采样（示例提供 1x/0.75x/0.5x） |
+
+## API 参考
 
 | 接口 | 说明 | 返回 |
 |---|---|---|
 | `initShaderPort(resourceManager)` | 绑定宿主资源管理器 | `void` |
 | `listEffects()` | 列出全部效果 | `EffectSummary[]` |
-| `getEffect(id)` | 取单个效果规格 | `EffectSpec` |
-| `getShaderSource(id, 'fragment')` | 取 final pass 的 GLSL | `string`（`#version 300 es`） |
-| `getPassSources(id)` | 取所有 pass 的源码与 UBO 绑定 | `PassSource[]` |
+| `getEffect(id)` | 取完整规格 | `EffectSpec` |
+| `getShaderSource(id, 'fragment')` | 取 final pass 的 GLSL | `string` |
+| `getPassSources(id)` | 取所有 pass 的源码 + UBO 绑定 | `PassSource[]` |
 | `getDefaultParams(id)` | 取最终 uniform 值（含组合基底） | `ParamValue[]` |
 | `getParamDescriptors(id)` | 参数面板描述符（range/color/select/position/boolean） | `ParamDescriptor[]` |
-| `encodeParam(id, name, value)` | 把 UI 值编码为 UBO 路径 + 数值 | `ParamValue` |
+| `encodeParam(id, name, value)` | UI 值 → UBO 路径 + 数值 | `ParamValue` |
 | `validateParams(id, params)` | 参数校验 | `{ ok, errors }` |
 
-**数据约定**：
-- `spec.resolved` 已是**最终 uniform 值**（P3-linear 颜色、Y 翻转后的位置、枚举码、色标数组）；**不要再次转换**。
-- 所有 final pass 自带 sRGB OETF；**不要再次编码**。中间 RTT 为 premultiplied alpha。
-- `passes` 按顺序渲染，最后一项到屏幕，其余进 RTT；宿主提供全屏顶点着色器（varying `_vs2fs_location0`）。
-- 所有效果**不假设**任何输入纹理（除 `requires: ['input']` 的组合效果）。
+完整字段说明见 [`docs/spec-format.md`](./docs/spec-format.md)。
+
+## 效果目录（48）
+
+| 类别 | 数量 | 代表 |
+|---|---|---|
+| Textures | 19 | Plasma、Marble、Aurora、MeshGradient、FlowingGradient、Perlin/Simplex/BlockNoise、Checkerboard、Spiral |
+| Shapes | 10 | Circle、RoundedRect、Polygon、Ring、Star、Ellipse、Heart、Teardrop、Arc、Cross |
+| Adjustments | 10 | BrightnessContrast、Duotone、HueShift、Exposure、Grayscale、Invert、Posterize、Saturation、Tint、Tritone |
+| Distortions | 5 | Twirl、Flip、Mirror、PolarCoordinates、RectangularCoordinates |
+| Stylize | 2 | Vignette、Glow |
+| Blurs | 1 | Blur（2 pass RTT） |
+| Interactive | 1 | CursorRipples（指针驱动，2 pass） |
+
+> 形状类默认 `radius=1` 填满画布（参考图为纯白，属预期）；调整类部分默认参数为恒等变换。
+
+## 性能
+
+Mate 80（1280×2598）实测，完整表见 [`docs/device-matrix.md`](./docs/device-matrix.md)：
+
+- 纯色 / 轻渐变：**120 fps**
+- Plasma / PerlinNoise / Aurora：**~60 fps**
+- Blur / Glow（2 pass）：**56–58 fps**
+- FlowingGradient：**54 fps**（`cost: medium`）
+- MeshGradient：**11.8 fps**（`cost: high`，建议半分辨率或 `Scale` 档位）
+
+`Scale` 档位：`1x / 0.75x / 0.5x`，整条链低分辨率渲染后线性上采样。
+
+## 已知限制
+
+- `Chrome` / `Neon` 依赖 shape/child alpha，暂不收录；
+- 有状态模拟类（Smoke / ReactionDiffusion / Boids）需要跨帧状态，暂不收录；
+- `meshAnchors` 在导出时按 1:1 aspect 烘焙，非 1:1 下跨端一致但与上游"每帧按实际 aspect 重算"略有差异；
+- 真机（Maleoon GPU）与参考渲染器存在驱动精度差异（纯色 ~7/255），属 GPU 精度而非管线错误。
 
 ## 文档
 
-- [效果规格格式](./docs/spec-format.md)
+- [效果规格格式（spec.json）](./docs/spec-format.md)
 - [转换与验证指南](./docs/conversion-guide.md)
 - [设备矩阵与验证记录](./docs/device-matrix.md)
+- [HarmonyOS 示例工程](./harmony/README.md)
+- [签名与凭据管理](./docs/signing.md)
 - [1.0 路线图](./docs/roadmap-1.0.md)
 - [溯源与命名政策](./docs/provenance-and-naming.md)
-
-## 约束与限制
-
-| 项 | 约束 |
-|---|---|
-| **OpenHarmony API** | 目标 API 12+ / SDK 5.0+（**待真机验证后定稿**） |
-| **GLES 版本** | **3.0**（`#version 300 es`）；**不支持 compute shader**（需 GLES 3.1） |
-| **精度** | 片元着色器必须显式 `precision highp float;` |
-| **依赖** | 无第三方运行时依赖；转换工具依赖 `naga`（MIT/Apache-2.0） |
-| **不支持** | WebGPU 专有能力（storage texture 写、compute、`f16`）；依赖的多 pass 效果需浮点渲染目标 |
-| **分辨率** | 背景层建议 1/2~1/4 分辨率 + 降帧；主视效层全分辨率 |
 
 ## 目录结构
 
 ```
 shaderport/
-├── LICENSE / NOTICE / THIRD_PARTY_NOTICES.md   Apache-2.0 + 第三方归属
-├── README.md / CHANGELOG.md / CONTRIBUTING.md / CODE_OF_CONDUCT.md
-├── .github/PULL_REQUEST_TEMPLATE.md            含"溯源自检"必勾项
-├── docs/
-│   ├── design.md                               设计说明（目标/非目标/关键决定）
-│   └── provenance-and-naming.md                与上游的隶属/命名/溯源政策
-├── effects/                                    效果包：每个效果 spec.md + shader.glsl + reference.png
-├── tools/                                      wgsl2glsles 转换与能力检查、capability-probe
-└── examples/                                   GLES C++ / WebGL2 / capability-probe 示例
+├── effects/                 效果包（spec + passes + reference）
+├── tools/                   export / naga / gate / sync / render-reference
+├── harmony/                 DevEco 工程（library HAR + entry demo）
+├── docs/                    规格、指南、设备矩阵、路线图
+├── .github/workflows/       Node 侧 CI（导出/转换/门禁/漂移检查）
+├── LICENSE / NOTICE / THIRD_PARTY_NOTICES.md
+└── README.md / CHANGELOG.md / CONTRIBUTING.md
 ```
-
-## 贡献
-
-见 [CONTRIBUTING.md](./CONTRIBUTING.md)。**设计变更与新效果请先开 issue**；行为准则见 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)。
 
 ## 与上游的关系
 
-> **本项目是完全独立的第三方项目，不是 `shader-effects-inc/shaders` 的官方移植、不是其 fork，也未获得 Shader Effects Inc. 的背书或赞助。** 两者无任何组织关系。
+> 本项目是完全独立的第三方项目，不是 `shader-effects-inc/shaders` 的官方移植、不是其 fork，也未获其背书。
 >
-> 项目名、包名与标识不包含上游品牌词；关系仅在文档中作事实性说明。完整政策见 [docs/provenance-and-naming.md](./docs/provenance-and-naming.md)。
-
-若某个效果**移植自**上游代码（MIT，含自动转译产物），该效果会在 `spec.md` 登记来源，文件头保留版权与许可声明，并汇总到 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。**移植即衍生作品**，不回避这一点。
+> 48 个效果由上游 WGSL 自动转译为 GLSL ES 3.00（`ported`），每个文件保留 MIT 声明；逐条来源见 `spec.json` 的 `provenance` 与 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
 
 ## 主体与联系
 
-本项目由 **河南趣知易解互联网科技有限公司（品牌 QuizzyJoy，一人公司 OPC）** 创建与维护。日常开发由创始人进行；**版权与商标归属公司**（Apache-2.0 只授予使用许可，不转让版权）。
+河南趣知易解互联网科技有限公司（品牌 **QuizzyJoy**，一人公司 OPC）创建与维护。
 
 | 用途 | 联系 |
 |---|---|
-| **安全问题（请勿公开 issue）** | security@quizzyjoy.com |
-| 一般咨询 / 合作 / 行为准则举报 | opensource@quizzyjoy.com |
+| 安全问题（请勿公开 issue） | security@quizzyjoy.com |
+| 一般咨询 / 合作 / 行为准则 | opensource@quizzyjoy.com |
 | 官网 | https://quizzyjoy.com |
 
 ## 开源协议
 
 [Apache-2.0](./LICENSE) © 2026 河南趣知易解互联网科技有限公司（QuizzyJoy）
-
-第三方内容按其原许可使用，详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+第三方内容按其原许可使用，详见 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
