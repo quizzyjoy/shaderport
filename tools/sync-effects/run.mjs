@@ -125,6 +125,9 @@ for (const entry of config) {
         precision: 'highp',
         glslVersion: '300 es',
         requires: effect.composite ? ['input'] : [],
+        // Composite effects are exported on top of Plasma; their RTT pass needs the base
+        // effect's own defaults, addressed under the `n_base` UBO node.
+        base: effect.composite ? {id: 'plasma', node: 'base'} : null,
         ubo: {
             block: 'combined_block_0Fragment',
             instance: '_group_0_binding_0_fs',
@@ -141,12 +144,16 @@ for (const entry of config) {
         passes: specPasses,
         props,
         defaults,
-        reference: {
-            file: 'reference.png',
-            width: 512,
-            height: 512,
-            time: 1.0,
-        },
+        // Reference images are only produced for single-pass effects until the multi-pass
+        // offscreen renderer lands; keep the field honest instead of pointing at a missing file.
+        reference: passes.length === 1
+            ? {
+                  file: 'reference.png',
+                  width: 512,
+                  height: 512,
+                  time: 1.0,
+              }
+            : null,
         provenance: {
             class: 'ported',
             repo: 'shader-effects-inc/shaders',

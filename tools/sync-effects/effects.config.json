@@ -22,5 +22,17 @@
     "id": "plasma",
     "layer": "main",
     "cost": "medium"
+  },
+  {
+    "name": "Twirl",
+    "id": "twirl",
+    "layer": "main",
+    "cost": "medium"
+  },
+  {
+    "name": "Blur",
+    "id": "blur",
+    "layer": "main",
+    "cost": "medium"
   }
 ]

@@ -52,10 +52,26 @@ for (const id of effectDirs) {
         console.warn(`[render-reference] ${id}: multi-pass not rendered yet (${spec.passes.length} passes)`)
         continue
     }
+    // Composite effects (filters/warps) also need the base effect's defaults under `n_base`.
+    const defaults = {}
+    for (const [key, value] of Object.entries(spec.defaults ?? {})) {
+        defaults[`n_${spec.ubo.node}.${key}`] = value
+    }
+    if (spec.base) {
+        const baseSpecPath = join(effectsRoot, spec.base.id, 'spec.json')
+        if (existsSync(baseSpecPath)) {
+            const baseSpec = JSON.parse(readFileSync(baseSpecPath, 'utf8'))
+            for (const [key, value] of Object.entries(baseSpec.defaults ?? {})) {
+                defaults[`n_${spec.base.node}.${key}`] = value
+            }
+        }
+    }
+
     items.push({
         id,
         dir,
         spec,
+        defaults,
         fs: readFileSync(fragmentPath, 'utf8'),
         width: spec.reference?.width ?? 512,
         height: spec.reference?.height ?? 512,
@@ -132,7 +148,7 @@ const payload = items.map((it) => ({
     height: it.height,
     time: it.time,
     ubo: it.spec.ubo,
-    defaults: it.spec.defaults,
+    defaults: it.defaults,
     compare: capture ? capture.base64 : null,
 }))
 
@@ -271,8 +287,8 @@ try {
                     } else if (node === 'n_n' || node === 'n_base') {
                         if (member === '_opacity') value = 1
                         else if (member === '_animTime') value = item.time
-                        else if (member === 'stopCount') value = Array.isArray(item.defaults.stops) ? item.defaults.stops.length : 0
-                        else value = item.defaults[member]
+                        else if (member === 'stopCount') value = Array.isArray(item.defaults[`${node}.stops`]) ? item.defaults[`${node}.stops`].length : 0
+                        else value = item.defaults[path]
                     }
 
                     const nums = value === undefined || value === null ? null : toNumbers(value, info.size > 1 ? info.size * 4 : 4)
