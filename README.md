@@ -44,10 +44,9 @@
 
 ## 安装
 
-> **状态**：0.1.0 已实现并在 HarmonyOS 模拟器完成 48 个效果验证，**尚未发布到 ohpm**。
+> **状态**：0.1.0 已提交 ohpm（审核中）。审核通过后可直接 `ohpm install @quizzyjoy/shaderport`。
 
 ```bash
-# 发布后
 ohpm install @quizzyjoy/shaderport
 
 # 本地开发（HAR 源码）
