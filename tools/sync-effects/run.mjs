@@ -144,16 +144,12 @@ for (const entry of config) {
         passes: specPasses,
         props,
         defaults,
-        // Reference images are only produced for single-pass effects until the multi-pass
-        // offscreen renderer lands; keep the field honest instead of pointing at a missing file.
-        reference: passes.length === 1
-            ? {
-                  file: 'reference.png',
-                  width: 512,
-                  height: 512,
-                  time: 1.0,
-              }
-            : null,
+        reference: {
+            file: 'reference.png',
+            width: 512,
+            height: 512,
+            time: 1.0,
+        },
         provenance: {
             class: 'ported',
             repo: 'shader-effects-inc/shaders',

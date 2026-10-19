@@ -2,11 +2,16 @@
 /**
  * Render deterministic reference images for every effect in effects/.
  *
- * This is also the JS prototype of the native UBO packer: it reads the effect's spec defaults,
- * reflects the real UBO layout with glGetActiveUniforms(UNIFORM_OFFSET), packs by offset and
- * draws a full-screen quad. The C++ renderer will do the same thing with the same spec.
+ * This is also the JS prototype of the native renderer: it reflects each pass's real UBO layout
+ * with glGetActiveUniforms(UNIFORM_OFFSET), packs the spec defaults by offset, ping-pongs
+ * intermediate passes through RGBA8 FBOs and draws the final pass to the canvas. The C++ renderer
+ * does the same thing with the same spec.
  *
  * Output: effects/<id>/reference.png (mirrored into the HAR rawfile tree)
+ *
+ * Diff mode:
+ *   node tools/render-reference/run.mjs --capture <capture-<id>.rgba>
+ * The capture file is <uint32 width><uint32 height><RGBA...> from nativeCapture().
  */
 import {existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs'
 import {dirname, join, resolve} from 'node:path'
@@ -32,27 +37,8 @@ if (!executablePath) {
     process.exit(2)
 }
 
-const effectDirs = readdirSync(effectsRoot, {withFileTypes: true})
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort()
-
-const items = []
-for (const id of effectDirs) {
-    const dir = join(effectsRoot, id)
-    const specPath = join(dir, 'spec.json')
-    if (!existsSync(specPath)) continue
-    const spec = JSON.parse(readFileSync(specPath, 'utf8'))
-    const fragmentPath = join(dir, spec.passes[0].file)
-    if (!existsSync(fragmentPath)) {
-        console.warn(`[render-reference] ${id}: missing ${spec.passes[0].file}`)
-        continue
-    }
-    if (spec.passes.length > 1) {
-        console.warn(`[render-reference] ${id}: multi-pass not rendered yet (${spec.passes.length} passes)`)
-        continue
-    }
-    // Composite effects (filters/warps) also need the base effect's defaults under `n_base`.
+/** Merge the effect's defaults with the composite base effect's defaults, keyed by UBO path. */
+const collectDefaults = (spec) => {
     const defaults = {}
     for (const [key, value] of Object.entries(spec.defaults ?? {})) {
         defaults[`n_${spec.ubo.node}.${key}`] = value
@@ -66,13 +52,37 @@ for (const id of effectDirs) {
             }
         }
     }
+    return defaults
+}
+
+const effectDirs = readdirSync(effectsRoot, {withFileTypes: true})
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort()
+
+const items = []
+for (const id of effectDirs) {
+    const dir = join(effectsRoot, id)
+    const specPath = join(dir, 'spec.json')
+    if (!existsSync(specPath)) continue
+    const spec = JSON.parse(readFileSync(specPath, 'utf8'))
+    const passes = []
+    for (const pass of spec.passes) {
+        const file = join(dir, pass.file)
+        if (!existsSync(file)) {
+            console.warn(`[render-reference] ${id}: missing ${pass.file}`)
+            break
+        }
+        passes.push({fs: readFileSync(file, 'utf8'), block: spec.ubo.block, instance: spec.ubo.instance})
+    }
+    if (passes.length !== spec.passes.length) continue
 
     items.push({
         id,
         dir,
         spec,
-        defaults,
-        fs: readFileSync(fragmentPath, 'utf8'),
+        passes,
+        defaults: collectDefaults(spec),
         width: spec.reference?.width ?? 512,
         height: spec.reference?.height ?? 512,
         time: spec.reference?.time ?? 1.0,
@@ -80,13 +90,10 @@ for (const id of effectDirs) {
 }
 
 if (items.length === 0) {
-    console.error('[render-reference] no single-pass effects found')
+    console.error('[render-reference] no effects found')
     process.exit(1)
 }
 
-// Optional diff mode:
-//   node tools/render-reference/run.mjs --capture <capture-<id>.rgba>
-// The capture file is <uint32 width><uint32 height><RGBA...> from nativeCapture().
 const args = process.argv.slice(2)
 const captureIndex = args.indexOf('--capture')
 const capturePath = captureIndex >= 0 ? args[captureIndex + 1] : null
@@ -117,33 +124,9 @@ if (capturePath) {
     items.push({...target, width, height, time: target.spec.reference?.time ?? 1.0})
 }
 
-const makeVertexShader = (fragmentSource) => {
-    const inputs = [...fragmentSource.matchAll(/^\s*(?:smooth|flat|noperspective)?\s*in\s+(float|vec[234])\s+([A-Za-z_]\w*)\s*;/gm)]
-    const outs = inputs.map(([, type, name]) => `smooth out ${type} ${name};`).join('\n')
-    const assigns = inputs
-        .map(([, type, name]) =>
-            name === '_vs2fs_location0'
-                ? `${name} = vec2(uv.x, 1.0 - uv.y);`
-                : `${name} = ${type === 'float' ? '0.0' : `${type}(0.0)`};`,
-        )
-        .join('\n    ')
-
-    return `#version 300 es
-precision highp float;
-layout(location = 0) in vec2 aPos;
-${outs}
-void main() {
-    vec2 uv = aPos * 0.5 + 0.5;
-    ${assigns}
-    gl_Position = vec4(aPos, 0.0, 1.0);
-}
-`
-}
-
 const payload = items.map((it) => ({
     id: it.id,
-    fs: it.fs,
-    vs: makeVertexShader(it.fs),
+    passes: it.passes,
     width: it.width,
     height: it.height,
     time: it.time,
@@ -194,6 +177,29 @@ try {
             return null
         }
 
+        const makeVertexShader = (fragmentSource) => {
+            const inputs = [...fragmentSource.matchAll(/^\s*(?:smooth|flat|noperspective)?\s*in\s+(float|vec[234])\s+([A-Za-z_]\w*)\s*;/gm)]
+            const outs = inputs.map(([, type, name]) => `smooth out ${type} ${name};`).join('\n')
+            const assigns = inputs
+                .map(([, type, name]) =>
+                    name === '_vs2fs_location0'
+                        ? `${name} = vec2(uv.x, 1.0 - uv.y);`
+                        : `${name} = ${type === 'float' ? '0.0' : `${type}(0.0)`};`,
+                )
+                .join('\n    ')
+
+            return `#version 300 es
+precision highp float;
+layout(location = 0) in vec2 aPos;
+${outs}
+void main() {
+    vec2 uv = aPos * 0.5 + 0.5;
+    ${assigns}
+    gl_Position = vec4(aPos, 0.0, 1.0);
+}
+`
+        }
+
         const out = []
 
         for (const item of items) {
@@ -221,130 +227,172 @@ try {
                 return shader
             }
 
-            let program
+            const programs = []
+            const membersReport = []
+            const missingReport = []
             try {
-                const vs = compile(gl.VERTEX_SHADER, item.vs)
-                const fs = compile(gl.FRAGMENT_SHADER, item.fs)
-                program = gl.createProgram()
-                gl.attachShader(program, vs)
-                gl.attachShader(program, fs)
-                gl.linkProgram(program)
-                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                    throw new Error(`link: ${gl.getProgramInfoLog(program)}`)
+                for (const pass of item.passes) {
+                    const vs = compile(gl.VERTEX_SHADER, makeVertexShader(pass.fs))
+                    const fs = compile(gl.FRAGMENT_SHADER, pass.fs)
+                    const program = gl.createProgram()
+                    gl.attachShader(program, vs)
+                    gl.attachShader(program, fs)
+                    gl.linkProgram(program)
+                    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                        throw new Error(`link: ${gl.getProgramInfoLog(program)}`)
+                    }
+                    gl.useProgram(program)
+
+                    const prefix = pass.instance
+                    let blockIndex = gl.getUniformBlockIndex(program, pass.block)
+                    if (blockIndex === gl.INVALID_INDEX) {
+                        const blocks = gl.getProgramParameter(program, gl.ACTIVE_UNIFORM_BLOCKS)
+                        for (let i = 0; i < blocks; i++) {
+                            if (gl.getActiveUniformBlockName(program, i) === pass.block) {
+                                blockIndex = i
+                                break
+                            }
+                        }
+                    }
+
+                    let blockSize = 0
+                    let ubo = null
+                    const members = []
+                    const missing = []
+                    if (blockIndex !== gl.INVALID_INDEX) {
+                        blockSize = gl.getActiveUniformBlockParameter(program, blockIndex, gl.UNIFORM_BLOCK_DATA_SIZE)
+                        gl.uniformBlockBinding(program, blockIndex, 0)
+
+                        const buffer = new ArrayBuffer(blockSize)
+                        const view = new DataView(buffer)
+                        const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS)
+
+                        for (let i = 0; i < count; i++) {
+                            const info = gl.getActiveUniform(program, i)
+                            if (!info) continue
+                            if (info.type === gl.SAMPLER_2D) {
+                                gl.uniform1i(gl.getUniformLocation(program, info.name), 0)
+                                continue
+                            }
+                            if (!info.name.startsWith(`${prefix}.`)) continue
+                            const offset = gl.getActiveUniforms(program, [i], gl.UNIFORM_OFFSET)[0]
+                            const path = info.name.slice(prefix.length + 1)
+                            const [node, ...rest] = path.split('.')
+                            const member = rest.join('.')
+
+                            let value = null
+                            if (node === '_sys') {
+                                const system = {
+                                    time: item.time,
+                                    viewportSize: [item.width, item.height],
+                                    logicalViewportSize: [item.width, item.height],
+                                    aspect: item.width / item.height,
+                                    pointer: [0.5, 0.5],
+                                    pointerActive: 0,
+                                }
+                                value = system[member]
+                            } else if (node === 'n_root') {
+                                value = member === '_opacity' ? 1 : undefined
+                            } else if (node === 'n_n' || node === 'n_base') {
+                                if (member === '_opacity') value = 1
+                                else if (member === '_animTime') value = item.time
+                                else if (member === 'stopCount') value = Array.isArray(item.defaults[`${node}.stops`]) ? item.defaults[`${node}.stops`].length : 0
+                                else value = item.defaults[path]
+                            }
+
+                            const nums = value === undefined || value === null ? null : toNumbers(value, info.size > 1 ? info.size * 4 : 4)
+                            const ignorable = /_pad\d_$/.test(member) || info.size > 1
+                            if (nums === null && !ignorable) missing.push(info.name)
+
+                            if (info.size === 1 && nums) {
+                                switch (info.type) {
+                                    case gl.FLOAT:
+                                        view.setFloat32(offset, Number(nums[0] ?? 0), true)
+                                        break
+                                    case gl.FLOAT_VEC2:
+                                        for (let k = 0; k < 2; k++) view.setFloat32(offset + k * 4, Number(nums[k] ?? 0), true)
+                                        break
+                                    case gl.FLOAT_VEC3:
+                                        for (let k = 0; k < 3; k++) view.setFloat32(offset + k * 4, Number(nums[k] ?? 0), true)
+                                        break
+                                    case gl.FLOAT_VEC4:
+                                        for (let k = 0; k < 4; k++) view.setFloat32(offset + k * 4, Number(nums[k] ?? 0), true)
+                                        break
+                                    case gl.INT:
+                                    case gl.BOOL:
+                                        view.setInt32(offset, Number(nums[0] ?? 0), true)
+                                        break
+                                    default:
+                                        break
+                                }
+                            }
+
+                            members.push({name: info.name, type: info.type, offset, size: info.size})
+                        }
+
+                        ubo = gl.createBuffer()
+                        gl.bindBuffer(gl.UNIFORM_BUFFER, ubo)
+                        gl.bufferData(gl.UNIFORM_BUFFER, blockSize, gl.DYNAMIC_DRAW)
+                        gl.bufferSubData(gl.UNIFORM_BUFFER, 0, new Uint8Array(buffer))
+                    }
+
+                    programs.push({program, ubo, blockSize})
+                    membersReport.push(members.length)
+                    missingReport.push(...missing)
                 }
-                gl.useProgram(program)
             } catch (error) {
                 out.push({id: item.id, error: String(error.message ?? error)})
                 continue
             }
 
-            // ---- UBO reflection + packing (prototype of the native SpPack) ----
-            const prefix = item.ubo.instance
-            let blockIndex = gl.getUniformBlockIndex(program, item.ubo.block)
-            if (blockIndex === gl.INVALID_INDEX) {
-                const blocks = gl.getProgramParameter(program, gl.ACTIVE_UNIFORM_BLOCKS)
-                for (let i = 0; i < blocks; i++) {
-                    if (gl.getActiveUniformBlockName(program, i) === item.ubo.block) {
-                        blockIndex = i
-                        break
-                    }
+            // RTT targets (only needed for multi-pass effects).
+            const textures = []
+            const framebuffers = []
+            if (item.passes.length > 1) {
+                for (let i = 0; i < 2; i++) {
+                    const texture = gl.createTexture()
+                    gl.bindTexture(gl.TEXTURE_2D, texture)
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, item.width, item.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+                    const framebuffer = gl.createFramebuffer()
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+                    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+                    textures.push(texture)
+                    framebuffers.push(framebuffer)
                 }
             }
 
-            const members = []
-            const missing = []
-            let blockSize = 0
-
-            if (blockIndex !== gl.INVALID_INDEX) {
-                blockSize = gl.getActiveUniformBlockParameter(program, blockIndex, gl.UNIFORM_BLOCK_DATA_SIZE)
-                gl.uniformBlockBinding(program, blockIndex, 0)
-
-                const buffer = new ArrayBuffer(blockSize)
-                const view = new DataView(buffer)
-                const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS)
-
-                for (let i = 0; i < count; i++) {
-                    const info = gl.getActiveUniform(program, i)
-                    if (!info || !info.name.startsWith(`${prefix}.`)) continue
-                    const offset = gl.getActiveUniforms(program, [i], gl.UNIFORM_OFFSET)[0]
-                    const path = info.name.slice(prefix.length + 1)
-                    const [node, ...rest] = path.split('.')
-                    const member = rest.join('.')
-
-                    let value = null
-                    if (node === '_sys') {
-                        const system = {
-                            time: item.time,
-                            viewportSize: [item.width, item.height],
-                            logicalViewportSize: [item.width, item.height],
-                            aspect: item.width / item.height,
-                            pointer: [0.5, 0.5],
-                            pointerActive: 0,
-                        }
-                        value = system[member]
-                    } else if (node === 'n_root') {
-                        value = member === '_opacity' ? 1 : undefined
-                    } else if (node === 'n_n' || node === 'n_base') {
-                        if (member === '_opacity') value = 1
-                        else if (member === '_animTime') value = item.time
-                        else if (member === 'stopCount') value = Array.isArray(item.defaults[`${node}.stops`]) ? item.defaults[`${node}.stops`].length : 0
-                        else value = item.defaults[path]
-                    }
-
-                    const nums = value === undefined || value === null ? null : toNumbers(value, info.size > 1 ? info.size * 4 : 4)
-                    // Padding and compile-time-disabled arrays are expected to stay zero.
-                    const ignorable = /_pad\d_$/.test(member) || info.size > 1
-                    if (nums === null && !ignorable) missing.push(info.name)
-
-                    if (info.size === 1 && nums) {
-                        switch (info.type) {
-                            case gl.FLOAT:
-                                view.setFloat32(offset, Number(nums[0] ?? 0), true)
-                                break
-                            case gl.FLOAT_VEC2:
-                                for (let k = 0; k < 2; k++) view.setFloat32(offset + k * 4, Number(nums[k] ?? 0), true)
-                                break
-                            case gl.FLOAT_VEC3:
-                                for (let k = 0; k < 3; k++) view.setFloat32(offset + k * 4, Number(nums[k] ?? 0), true)
-                                break
-                            case gl.FLOAT_VEC4:
-                                for (let k = 0; k < 4; k++) view.setFloat32(offset + k * 4, Number(nums[k] ?? 0), true)
-                                break
-                            case gl.INT:
-                            case gl.BOOL:
-                                view.setInt32(offset, Number(nums[0] ?? 0), true)
-                                break
-                            default:
-                                break
-                        }
-                    }
-
-                    members.push({name: info.name, type: info.type, offset, size: info.size})
-                }
-
-                const ubo = gl.createBuffer()
-                gl.bindBuffer(gl.UNIFORM_BUFFER, ubo)
-                gl.bufferData(gl.UNIFORM_BUFFER, blockSize, gl.DYNAMIC_DRAW)
-                gl.bufferSubData(gl.UNIFORM_BUFFER, 0, new Uint8Array(buffer))
-                gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, ubo)
-            }
-
-            // ---- fullscreen draw ----
             const vao = gl.createVertexArray()
             gl.bindVertexArray(vao)
             const vbo = gl.createBuffer()
             gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
-            gl.bufferData(
-                gl.ARRAY_BUFFER,
-                new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-                gl.STATIC_DRAW,
-            )
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
             gl.enableVertexAttribArray(0)
             gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
-            gl.viewport(0, 0, item.width, item.height)
-            gl.clearColor(0, 0, 0, 0)
-            gl.clear(gl.COLOR_BUFFER_BIT)
-            gl.drawArrays(gl.TRIANGLES, 0, 6)
+
+            const passCount = programs.length
+            for (let i = 0; i < passCount; i++) {
+                const isFinal = i === passCount - 1
+                gl.bindFramebuffer(gl.FRAMEBUFFER, isFinal ? null : framebuffers[i % 2])
+                gl.viewport(0, 0, item.width, item.height)
+                gl.clearColor(0, 0, 0, isFinal ? 1 : 0)
+                gl.clear(gl.COLOR_BUFFER_BIT)
+
+                gl.useProgram(programs[i].program)
+                if (programs[i].ubo) {
+                    gl.bindBuffer(gl.UNIFORM_BUFFER, programs[i].ubo)
+                    gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, programs[i].ubo)
+                }
+                if (i > 0) {
+                    gl.activeTexture(gl.TEXTURE0)
+                    gl.bindTexture(gl.TEXTURE_2D, textures[(i - 1) % 2])
+                }
+                gl.drawArrays(gl.TRIANGLES, 0, 6)
+            }
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
             gl.finish()
 
             const pixels = new Uint8Array(item.width * item.height * 4)
@@ -395,9 +443,9 @@ try {
             out.push({
                 id: item.id,
                 png: canvas.toDataURL('image/png'),
-                blockSize,
-                members,
-                missing,
+                passCount,
+                members: membersReport,
+                missing: missingReport,
                 diff,
                 stats: {
                     min,
@@ -436,7 +484,8 @@ for (const result of results.items) {
             console.log(
                 `[render-reference] diff ${result.id}: meanAbs=${result.diff.meanAbs.toFixed(2)} ` +
                     `max=${result.diff.maxAbs} over8=${(result.diff.over8Ratio * 100).toFixed(2)}% ` +
-                    `over16=${(result.diff.over16Ratio * 100).toFixed(2)}% (${capture.width}x${capture.height})`,
+                    `over16=${(result.diff.over16Ratio * 100).toFixed(2)}% ` +
+                    `(${capture.width}x${capture.height}, ${result.passCount}p)`,
             )
             if (result.diff.over8Ratio > 0.05) {
                 process.exitCode = 1
@@ -455,8 +504,9 @@ for (const result of results.items) {
 
     written++
     console.log(
-        `[render-reference] ${result.id}: ${bytes.length}B block=${result.blockSize} members=${result.members.length} ` +
-            `missing=${result.missing.length} nonBlack=${(result.stats.nonBlackRatio * 100).toFixed(1)}% ` +
+        `[render-reference] ${result.id}: ${bytes.length}B passes=${result.passCount} ` +
+            `members=${result.members.join('/')} missing=${result.missing.length} ` +
+            `nonBlack=${(result.stats.nonBlackRatio * 100).toFixed(1)}% ` +
             `lum=${result.stats.min.toFixed(0)}..${result.stats.max.toFixed(0)} mean=${result.stats.mean.toFixed(1)}`,
     )
     if (result.missing.length > 0) {
