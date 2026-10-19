@@ -155,5 +155,101 @@
     "id": "hue-shift",
     "layer": "main",
     "cost": "very-low"
+  },
+  {
+    "name": "Ellipse",
+    "id": "ellipse",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Heart",
+    "id": "heart",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Teardrop",
+    "id": "teardrop",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Arc",
+    "id": "arc",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Cross",
+    "id": "cross",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Exposure",
+    "id": "exposure",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Grayscale",
+    "id": "grayscale",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Invert",
+    "id": "invert",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Posterize",
+    "id": "posterize",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Saturation",
+    "id": "saturation",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Tint",
+    "id": "tint",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Tritone",
+    "id": "tritone",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Flip",
+    "id": "flip",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Mirror",
+    "id": "mirror",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "PolarCoordinates",
+    "id": "polar-coordinates",
+    "layer": "main",
+    "cost": "low"
+  },
+  {
+    "name": "RectangularCoordinates",
+    "id": "rectangular-coordinates",
+    "layer": "main",
+    "cost": "low"
   }
 ]

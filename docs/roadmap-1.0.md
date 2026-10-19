@@ -63,10 +63,16 @@
 | 5 | `RoundedRect` / `Polygon` / `Ring` / `Star` | shape | 解析式 SDF；默认 radius 填满画布（纯白，属预期） |
 | 5 | `BrightnessContrast` / `HueShift` | filter（点式内联） | 默认参数中性，输出 ≈ 输入 |
 | 5 | `Duotone` | filter（点式内联） | 默认双色调映射为灰度 |
+| 6 | `Ellipse` / `Heart` / `Teardrop` / `Arc` / `Cross` | shape | 默认填满画布（纯白），参数调小后显形 |
+| 6 | `Exposure` / `Grayscale` / `Invert` / `Posterize` / `Saturation` / `Tint` / `Tritone` | filter（点式内联） | 以 Plasma 为基底；部分默认中性，`Posterize` 因线性亮度偏黑（内容相关，非管线问题） |
+| 6 | `Flip` / `Mirror` | warp | 1 pass；`Flip` 默认不翻转 |
+| 6 | `PolarCoordinates` / `RectangularCoordinates` | warp | 1 pass |
 
 备选：`Vignette`、`Glow`。
 
-**当前状态**：25 个效果通过设备像素验证（其中 7 个为 shape / 调整类）。`Chrome`、`Neon` 暂缓：静态导出有 14 个 uniform 缺默认值，且效果依赖 shape/child alpha 的遮罩语义。
+**当前状态**：41 个效果通过设备像素验证（13 生成器 + 9 形状 + 5 warp + 4 filter + 10 调整）。`Chrome`、`Neon` 暂缓：静态导出有 14 个 uniform 缺默认值，且效果依赖 shape/child alpha 的遮罩语义。
+>
+> 验证方式提示：自动轮播覆盖 41 个效果需约 74 s，模拟器会因熄屏中断；批量验证前需 `power-shell wakeup` + `setmode 602`，或改成手动/分段抓取。
 
 **首批状态**：17 个全部通过设备像素验证（`Aurora` 之前的 alpha 差异确认是输入值不一致，不是 EGL 预乘问题；统一使用 `spec.resolved` 后 max ≤ 1）。
 

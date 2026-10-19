@@ -270,6 +270,188 @@
         "input"
       ],
       "path": "effects/hue-shift"
+    },
+    {
+      "id": "ellipse",
+      "name": "Ellipse",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/ellipse"
+    },
+    {
+      "id": "heart",
+      "name": "Heart",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/heart"
+    },
+    {
+      "id": "teardrop",
+      "name": "Teardrop",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/teardrop"
+    },
+    {
+      "id": "arc",
+      "name": "Arc",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/arc"
+    },
+    {
+      "id": "cross",
+      "name": "Cross",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/cross"
+    },
+    {
+      "id": "exposure",
+      "name": "Exposure",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/exposure"
+    },
+    {
+      "id": "grayscale",
+      "name": "Grayscale",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/grayscale"
+    },
+    {
+      "id": "invert",
+      "name": "Invert",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/invert"
+    },
+    {
+      "id": "posterize",
+      "name": "Posterize",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/posterize"
+    },
+    {
+      "id": "saturation",
+      "name": "Saturation",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/saturation"
+    },
+    {
+      "id": "tint",
+      "name": "Tint",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/tint"
+    },
+    {
+      "id": "tritone",
+      "name": "Tritone",
+      "category": "Adjustments",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/tritone"
+    },
+    {
+      "id": "flip",
+      "name": "Flip",
+      "category": "Distortions",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/flip"
+    },
+    {
+      "id": "mirror",
+      "name": "Mirror",
+      "category": "Distortions",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/mirror"
+    },
+    {
+      "id": "polar-coordinates",
+      "name": "PolarCoordinates",
+      "category": "Distortions",
+      "layer": "main",
+      "cost": "low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/polar-coordinates"
+    },
+    {
+      "id": "rectangular-coordinates",
+      "name": "RectangularCoordinates",
+      "category": "Distortions",
+      "layer": "main",
+      "cost": "low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/rectangular-coordinates"
     }
   ]
 }
