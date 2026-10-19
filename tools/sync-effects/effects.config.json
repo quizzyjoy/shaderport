@@ -107,5 +107,11 @@
     "id": "glow",
     "layer": "main",
     "cost": "medium"
+  },
+  {
+    "name": "CursorRipples",
+    "id": "cursor-ripples",
+    "layer": "main",
+    "cost": "medium"
   }
 ]

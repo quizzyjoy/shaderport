@@ -145,6 +145,14 @@ if (items.length === 0) {
 const args = process.argv.slice(2)
 const captureIndex = args.indexOf('--capture')
 const capturePath = captureIndex >= 0 ? args[captureIndex + 1] : null
+const onlyIndex = args.indexOf('--only')
+const onlyId = onlyIndex >= 0 ? args[onlyIndex + 1] : null
+if (onlyId) {
+    const kept = items.filter((item) => item.id === onlyId)
+    items.length = 0
+    items.push(...kept)
+}
+
 const timeIndex = args.indexOf('--time')
 const timeOverride = timeIndex >= 0 ? Number(args[timeIndex + 1]) : null
 // Force the strict thresholds even for effects that widen them in their spec.

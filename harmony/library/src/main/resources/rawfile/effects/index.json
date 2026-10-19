@@ -182,6 +182,18 @@
         "input"
       ],
       "path": "effects/glow"
+    },
+    {
+      "id": "cursor-ripples",
+      "name": "CursorRipples",
+      "category": "Interactive",
+      "layer": "main",
+      "cost": "medium",
+      "passes": 2,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/cursor-ripples"
     }
   ]
 }
