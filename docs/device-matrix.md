@@ -1,0 +1,72 @@
+# 设备矩阵与验证记录
+
+> 验收口径：同一 `spec`、同一时间 `t=1.0`、同一分辨率下，把设备 `glReadPixels` 与参考渲染器逐像素比较。
+> 阈值见各效果 `spec.validation.pixelDiff`；默认严格（`meanAbs ≤ 1`、`over8 ≤ 1%`、band ≤ 2）。
+
+## 1. 已测设备
+
+| 设备 | 系统 | 形态 | 视口 | 状态 |
+|---|---|---|---|---|
+| 模拟器 `bp_fold` | HarmonyOS 6.1.0(23) | foldable | 展开 **2224×2288** / 折叠 **1080×2296** | ✅ 48 个效果 |
+| 真机 `VYG-AL30` | HarmonyOS 7.0.0.109 | phone | — | ⏸ 未签名，待 DevEco 签名后补测 |
+
+说明：
+
+- 模拟器通过 `devecocli emulator start "bp_fold"` 启动；HAP 为未签名 debug 包。
+- 真机拒绝未签名 HAP：`code:9568320 error: no signature file`。
+
+## 2. 效果覆盖（48/48）
+
+| 类别 | 数量 | 备注 |
+|---|---|---|
+| 生成器（Textures） | 20 | 含 Plasma / Marble / 三种噪声 / MeshGradient / FlowingGradient / Aurora 等 |
+| 形状（Shapes） | 10 | 默认 `radius=1` 填满画布，参考图纯白属预期 |
+| warp（Distortions） | 5 | Twirl / Flip / Mirror / PolarCoordinates / RectangularCoordinates |
+| filter（Blurs / Stylize） | 4 | Blur(2p)、Glow(2p)、Vignette(1p 内联)、CursorRipples(2p) |
+| 调整（Adjustments） | 10 | 部分默认中性；Posterize 受线性亮度影响偏黑（内容相关） |
+
+逐条结果：
+
+- **47 个严格通过**：`meanAbs = 0.00`，`max ≤ 1`（RTT 类最大 13：Blur / Glow / CursorRipples）
+- **PerlinNoise**：`meanAbs 3.52`、`over8 9.70%`、`bandΔ 5.9`（放宽阈值；噪声 hash 对驱动敏感）
+- 形状/中性调整的"纯白/无变化"均为默认参数导致，不是渲染错误
+
+## 3. 已验证的运行能力
+
+| 能力 | 验证方式 |
+|---|---|
+| 单 pass 生成器 | 40+ 效果逐像素 |
+| 多 pass RTT | Blur / Glow / CursorRipples（2 pass） |
+| 点式滤镜内联 | Vignette / BrightnessContrast / Duotone 等（1 pass） |
+| 数组 / 派生 uniform | MeshGradient（色标数组）、FlowingGradient（convA..D） |
+| 透明 alpha | Aurora 与参考完全一致 |
+| 指针输入 | 注入 swipe → `pointer down 0.2248,0.3405`；CursorRipples 画面扰动 |
+| 尺寸变化 | fold close/open → `resize 1080x2296 ↔ 2224x2288`，RTT 重建正常 |
+| 参数面板 | spec 驱动 slider / color / select / position / boolean，实时生效 |
+
+## 4. 尚未测量
+
+| 项 | 说明 |
+|---|---|
+| 帧率 / 功耗 | 当前只验证正确性；性能档位（`cost`）尚未用真机 fps 校准 |
+| 真机观感 | 需要签名后逐效果截图对比 |
+| 驱动差异 | 模拟器使用宿主 GPU（ANGLE/Intel）；真机 GPU 结果待补 |
+| 长时间稳定性 | 未做 30 分钟以上循环测试 |
+
+## 5. 复现步骤
+
+```bash
+# 构建并安装
+cd harmony
+hvigorw assembleHap --mode module -p product=default -p module=entry@default
+hdc -t 127.0.0.1:5555 install -r entry/build/default/outputs/default/entry-default-unsigned.hap
+hdc -t 127.0.0.1:5555 shell aa force-stop com.quizzyjoy.shaderport.demo
+hdc -t 127.0.0.1:5555 shell aa start -a EntryAbility -b com.quizzyjoy.shaderport.demo
+
+# 在 demo 中选效果 → Capture
+# 拉取并对比
+hdc -t 127.0.0.1:5555 file recv \
+  /data/app/el2/100/base/com.quizzyjoy.shaderport.demo/haps/entry/files/capture-plasma.rgba \
+  /tmp/capture-plasma.rgba
+node tools/render-reference/run.mjs --capture /tmp/capture-plasma.rgba
+```

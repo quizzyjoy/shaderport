@@ -3,7 +3,7 @@
 > **Portable GPU effects for OpenGL ES 3.0** — a WGSL → GLSL ES 3.00 converter plus a curated, production-tested shader effect pack.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-![Status](https://img.shields.io/badge/status-design%20phase-orange)
+![Status](https://img.shields.io/badge/status-0.1.0%20beta%20%C2%B7%2048%20effects-blue)
 ![GLES](https://img.shields.io/badge/OpenGL%20ES-3.0-green)
 
 > **主仓（source of truth）**：[GitHub `quizzyjoy/shaderport`](https://github.com/quizzyjoy/shaderport)。
@@ -24,7 +24,7 @@
 
 ## 安装
 
-> **状态**：v0.1 尚未发布。以下为规划中的安装方式，发布后生效。
+> **状态**：0.1.0 已实现并在 HarmonyOS 模拟器上完成 48 个效果的逐像素验证，**尚未发布到 ohpm**。以下安装方式在发布后生效。
 
 ```bash
 # HarmonyOS（ohpm 中心仓，发布后）
@@ -49,41 +49,66 @@ git clone https://github.com/quizzyjoy/shaderport.git
 
 ## 使用示例
 
-> **状态**：以下为 v0.1 规划中的 API 形态，用于说明设计意图；实现前请以 `effects/` 与 `tools/` 的实际产物为准。
+> **状态**：以下 API 已实现（`harmony/library`）。
 
 **ArkTS 侧（取效果规格与着色器资源；渲染由宿主 native 层完成）**：
 ```ts
-import { listEffects, getEffect, getShaderSource } from '@quizzyjoy/shaderport'
+import {
+  initShaderPort, listEffects, getEffect, getShaderSource,
+  getPassSources, getDefaultParams, getParamDescriptors, encodeParam,
+} from '@quizzyjoy/shaderport'
 
-// 1) 看有哪些效果（含用途层与成本档）
+// 0) 绑定宿主 resourceManager（HAR 的 rawfile 会合并进宿主资源包）
+initShaderPort(getContext(this).resourceManager)
+
+// 1) 列出效果
 const effects = listEffects()
-// [{ id: 'mesh-gradient', layer: 'background', cost: 'very-low', passes: 1 }, ...]
+// [{ id: 'plasma', layer: 'main', cost: 'medium', passes: 1, ... }]
 
-// 2) 取单个效果的规格（uniform 定义、默认参数、参考图路径）
-const spec = getEffect('mesh-gradient')
+// 2) 取规格与最终 uniform 值
+const spec = getEffect('plasma')
+const defaults = getDefaultParams('plasma')   // [{ name: 'n_n.colorA', values: [...] }, ...]
 
-// 3) 取 GLSL ES 3.00 源码（交给 native 渲染器编译）
-const vertex   = getShaderSource('mesh-gradient', 'vertex')
-const fragment = getShaderSource('mesh-gradient', 'fragment')
+// 3) 取全部分 pass 的 GLSL（最后一项是 final）
+const passes = getPassSources('plasma')       // [{ fragment, block, instance }, ...]
+
+// 4) 参数面板
+const controls = getParamDescriptors('plasma')
+const encoded = encodeParam('plasma', 'intensity', 2.0)
+nativeSetParam(encoded.name, encoded.values)   // n_n.intensity = [2.0]
 ```
 
-**native 侧（C++/GLES）**：见 `examples/gles-cpp/`（计划）——全屏三角形 + 单 pass，按 `spec.md` 的 uniform 表绑定。
+**native 侧（C++/GLES）**：见 `harmony/entry/src/main/cpp`（`renderer.cpp`）——EGL/GLES3、XComponent surface、per-pass UBO 反射、RTT ping-pong、指针与 resize。
 
 ## 接口说明
 
-> v0.1 规划的公开接口（Ts/ArkTS 侧）：
+公开接口（ArkTS 侧，已实现）：
 
 | 接口 | 说明 | 返回 |
 |---|---|---|
-| `listEffects()` | 列出全部效果 | `EffectSummary[]`（`id` / `layer` / `cost` / `passes`） |
-| `getEffect(id)` | 取单个效果规格 | `EffectSpec`（`uniforms` / `defaults` / `reference` / `requires`） |
-| `getShaderSource(id, stage)` | 取 GLSL 源码 | `string`（`#version 300 es`） |
-| `validateParams(id, params)` | 参数校验（范围、类型、互斥项） | `{ ok: boolean, errors: string[] }` |
+| `initShaderPort(resourceManager)` | 绑定宿主资源管理器 | `void` |
+| `listEffects()` | 列出全部效果 | `EffectSummary[]` |
+| `getEffect(id)` | 取单个效果规格 | `EffectSpec` |
+| `getShaderSource(id, 'fragment')` | 取 final pass 的 GLSL | `string`（`#version 300 es`） |
+| `getPassSources(id)` | 取所有 pass 的源码与 UBO 绑定 | `PassSource[]` |
+| `getDefaultParams(id)` | 取最终 uniform 值（含组合基底） | `ParamValue[]` |
+| `getParamDescriptors(id)` | 参数面板描述符（range/color/select/position/boolean） | `ParamDescriptor[]` |
+| `encodeParam(id, name, value)` | 把 UI 值编码为 UBO 路径 + 数值 | `ParamValue` |
+| `validateParams(id, params)` | 参数校验 | `{ ok, errors }` |
 
 **数据约定**：
-- 颜色以 **线性空间** `vec3`（0..1）传递，渲染端负责 gamma 转换；
-- 时间 `uTime` 单位秒；分辨率 `uRes` 单位像素；
-- 所有效果**不假设**任何输入纹理（除声明 `requires: ['texture']` 的项）。
+- `spec.resolved` 已是**最终 uniform 值**（P3-linear 颜色、Y 翻转后的位置、枚举码、色标数组）；**不要再次转换**。
+- 所有 final pass 自带 sRGB OETF；**不要再次编码**。中间 RTT 为 premultiplied alpha。
+- `passes` 按顺序渲染，最后一项到屏幕，其余进 RTT；宿主提供全屏顶点着色器（varying `_vs2fs_location0`）。
+- 所有效果**不假设**任何输入纹理（除 `requires: ['input']` 的组合效果）。
+
+## 文档
+
+- [效果规格格式](./docs/spec-format.md)
+- [转换与验证指南](./docs/conversion-guide.md)
+- [设备矩阵与验证记录](./docs/device-matrix.md)
+- [1.0 路线图](./docs/roadmap-1.0.md)
+- [溯源与命名政策](./docs/provenance-and-naming.md)
 
 ## 约束与限制
 

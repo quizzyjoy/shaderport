@@ -11,8 +11,9 @@
 - **来源**：https://github.com/shader-effects-inc/shaders
 - **许可**：MIT License，© 2026 Shader Effects Inc.
 - **本项目如何使用**：
-  - **效果选型与规格设计参考**（未包含其代码）；
-  - **移植来源**：部分效果若自上项目移植，将在下表逐条登记。
+  - **效果资产**：48 个效果由上游 WGSL 自动转译为 GLSL ES 3.00（`ported`），每个 GLSL 文件头保留 MIT 声明，`spec.json` 的 `provenance` 记录上游路径与版本；
+  - **规格与选型参考**；
+  - **未包含**上游的 TypeGPU 运行时、React/Vue/Svelte/Solid 绑定、CLI/codegen 与遥测代码。
 - **与上游的关系**：本项目为独立第三方项目，**非官方移植、无隶属或背书关系**；详见 `docs/provenance-and-naming.md`。
 
 ### 许可全文
@@ -43,9 +44,25 @@ SOFTWARE.
 
 ### 已登记的移植来源
 
-| 本项目效果 | 类别 | 上游路径 | 上游版本 | 说明 |
-|---|---|---|---|---|
-| （待登记） | `ported` | `packages/core/src/shaders/<Name>/index.ts` | | WGSL → GLSL ES 3.00 |
+| 项目 | 内容 |
+|---|---|
+| 移植效果数 | **48** |
+| 溯源类别 | 全部为 `ported`（自动转译属于改编） |
+| 上游版本 | `v4.0.4` |
+| 逐条来源 | 每个 `effects/<id>/spec.json` 的 `provenance` 字段（`repo` / `version` / `path` / `license`） |
+| 转换方式 | WGSL → GLSL ES 3.00（naga 30.0.1），无人工改写 |
+
+效果 id：
+
+```
+solid-color, linear-gradient, radial-gradient, plasma, twirl, blur, marble,
+perlin-noise, simplex-noise, block-noise, circle, ripples, mesh-gradient,
+flowing-gradient, aurora, vignette, glow, cursor-ripples, rounded-rect,
+polygon, ring, star, brightness-contrast, duotone, hue-shift, ellipse, heart,
+teardrop, arc, cross, exposure, grayscale, invert, posterize, saturation,
+tint, tritone, flip, mirror, polar-coordinates, rectangular-coordinates,
+checkerboard, stripes, grid, dot-grid, hex-grid, sine-wave, spiral
+```
 
 ---
 
