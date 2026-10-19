@@ -452,6 +452,76 @@
         "input"
       ],
       "path": "effects/rectangular-coordinates"
+    },
+    {
+      "id": "checkerboard",
+      "name": "Checkerboard",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/checkerboard"
+    },
+    {
+      "id": "stripes",
+      "name": "Stripes",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/stripes"
+    },
+    {
+      "id": "grid",
+      "name": "Grid",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/grid"
+    },
+    {
+      "id": "dot-grid",
+      "name": "DotGrid",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/dot-grid"
+    },
+    {
+      "id": "hex-grid",
+      "name": "HexGrid",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/hex-grid"
+    },
+    {
+      "id": "sine-wave",
+      "name": "SineWave",
+      "category": "Textures",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/sine-wave"
+    },
+    {
+      "id": "spiral",
+      "name": "Spiral",
+      "category": "Textures",
+      "layer": "main",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/spiral"
     }
   ]
 }

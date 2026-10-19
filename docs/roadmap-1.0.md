@@ -67,10 +67,13 @@
 | 6 | `Exposure` / `Grayscale` / `Invert` / `Posterize` / `Saturation` / `Tint` / `Tritone` | filter（点式内联） | 以 Plasma 为基底；部分默认中性，`Posterize` 因线性亮度偏黑（内容相关，非管线问题） |
 | 6 | `Flip` / `Mirror` | warp | 1 pass；`Flip` 默认不翻转 |
 | 6 | `PolarCoordinates` / `RectangularCoordinates` | warp | 1 pass |
+| 7 | `Checkerboard` / `Stripes` / `Grid` / `HexGrid` | generator | 图案类；Grid/HexGrid 默认细线（低非黑占比） |
+| 7 | `DotGrid` / `SineWave` | generator | 默认尺寸/线宽填满画布（纯白，属预期） |
+| 7 | `Spiral` | generator | 动画螺旋 |
 
 备选：`Vignette`、`Glow`。
 
-**当前状态**：41 个效果通过设备像素验证（13 生成器 + 9 形状 + 5 warp + 4 filter + 10 调整）。`Chrome`、`Neon` 暂缓：静态导出有 14 个 uniform 缺默认值，且效果依赖 shape/child alpha 的遮罩语义。
+**当前状态**：**48 个效果全部通过设备像素验证 —— 1.0 的效果数量目标已达成**。`Chrome`、`Neon` 暂缓：静态导出有 14 个 uniform 缺默认值，且效果依赖 shape/child alpha 的遮罩语义。
 >
 > 验证方式提示：自动轮播覆盖 41 个效果需约 74 s，模拟器会因熄屏中断；批量验证前需 `power-shell wakeup` + `setmode 602`，或改成手动/分段抓取。
 

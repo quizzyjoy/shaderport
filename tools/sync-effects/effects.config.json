@@ -251,5 +251,47 @@
     "id": "rectangular-coordinates",
     "layer": "main",
     "cost": "low"
+  },
+  {
+    "name": "Checkerboard",
+    "id": "checkerboard",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "Stripes",
+    "id": "stripes",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "Grid",
+    "id": "grid",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "DotGrid",
+    "id": "dot-grid",
+    "layer": "background",
+    "cost": "very-low"
+  },
+  {
+    "name": "HexGrid",
+    "id": "hex-grid",
+    "layer": "background",
+    "cost": "low"
+  },
+  {
+    "name": "SineWave",
+    "id": "sine-wave",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Spiral",
+    "id": "spiral",
+    "layer": "main",
+    "cost": "low"
   }
 ]
