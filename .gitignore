@@ -4,6 +4,9 @@
 *.jks
 *.keystore
 *.p8
+*.p7b
+*.cer
+*.csr
 *.pem
 *.key
 *.mobileprovision
@@ -40,6 +43,9 @@ CMakeFiles/
 cmake-build-*/
 
 # ---- HarmonyOS / DevEco ----
+# 本地签名配置：DevEco 自动签名会写入 harmony/build-profile.json5，切勿入库
+harmony/build-profile.signing.local.json5
+harmony/signing.local.json5
 .hvigor/
 .cxx/
 oh_modules/
