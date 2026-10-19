@@ -18,10 +18,10 @@
   },
   "color": {
     "input": "srgb",
-    "working": "linear-srgb",
+    "working": "p3-linear",
     "output": "srgb-encoded",
     "alpha": "straight",
-    "note": "final pass already applies the sRGB OETF; do not encode again"
+    "note": "uniform colours are resolved at export time in the upstream working space (P3-linear by default); do not re-convert. The final pass already applies the sRGB OETF; do not encode again."
   },
   "passes": [
     {
@@ -148,6 +148,31 @@
     "softness": 0,
     "thickness": 0.5,
     "phase": 0
+  },
+  "resolved": {
+    "n_n.center": [
+      0.5,
+      0.5,
+      0,
+      0
+    ],
+    "n_n.colorA": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "n_n.colorB": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "n_n.speed": 1,
+    "n_n.frequency": 20,
+    "n_n.softness": 0,
+    "n_n.thickness": 0.5,
+    "n_n.phase": 0
   },
   "reference": {
     "file": "reference.png",

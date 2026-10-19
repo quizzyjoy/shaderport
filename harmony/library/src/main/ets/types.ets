@@ -73,6 +73,7 @@ export interface EffectSpec {
   passes: EffectPass[];
   props: Record<string, PropSpec>;
   defaults: Record<string, ESObject>;
+  resolved: Record<string, ESObject>;
   reference: EffectReference;
 }
 

@@ -136,14 +136,17 @@ for (const entry of config) {
         },
         color: {
             input: 'srgb',
-            working: 'linear-srgb',
+            working: 'p3-linear',
             output: 'srgb-encoded',
             alpha: 'straight',
-            note: 'final pass already applies the sRGB OETF; do not encode again',
+            note: 'uniform colours are resolved at export time in the upstream working space (P3-linear by default); do not re-convert. The final pass already applies the sRGB OETF; do not encode again.',
         },
         passes: specPasses,
         props,
         defaults,
+        // FINAL post-transform uniform values exported from the upstream uniform store
+        // (colour-stops arrays, converted colours, px/percent props, enums, positions).
+        resolved: effect.resolved ?? {},
         reference: {
             file: 'reference.png',
             width: 512,

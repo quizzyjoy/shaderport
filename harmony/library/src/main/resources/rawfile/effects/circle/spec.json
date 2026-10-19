@@ -18,10 +18,10 @@
   },
   "color": {
     "input": "srgb",
-    "working": "linear-srgb",
+    "working": "p3-linear",
     "output": "srgb-encoded",
     "alpha": "straight",
-    "note": "final pass already applies the sRGB OETF; do not encode again"
+    "note": "uniform colours are resolved at export time in the upstream working space (P3-linear by default); do not re-convert. The final pass already applies the sRGB OETF; do not encode again."
   },
   "passes": [
     {
@@ -198,6 +198,32 @@
     "strokeColor": "#000000",
     "strokePosition": "center",
     "colorSpace": "linear"
+  },
+  "resolved": {
+    "n_n.origin": "center",
+    "n_n.color": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "n_n.radius": 1,
+    "n_n.softness": 0,
+    "n_n.center": [
+      0.5,
+      0.5,
+      0,
+      0
+    ],
+    "n_n.strokeThickness": 0,
+    "n_n.strokeColor": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "n_n.strokePosition": 1,
+    "n_n.colorSpace": 0
   },
   "reference": {
     "file": "reference.png",

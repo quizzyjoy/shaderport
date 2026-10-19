@@ -18,10 +18,10 @@
   },
   "color": {
     "input": "srgb",
-    "working": "linear-srgb",
+    "working": "p3-linear",
     "output": "srgb-encoded",
     "alpha": "straight",
-    "note": "final pass already applies the sRGB OETF; do not encode again"
+    "note": "uniform colours are resolved at export time in the upstream working space (P3-linear by default); do not re-convert. The final pass already applies the sRGB OETF; do not encode again."
   },
   "passes": [
     {
@@ -177,6 +177,106 @@
     "angle": 0,
     "edges": "stretch",
     "colorSpace": "linear"
+  },
+  "resolved": {
+    "n_n.colorA": [
+      0.1860339194536209,
+      0.9671486616134644,
+      0.07257390022277832,
+      1
+    ],
+    "n_n.colorB": [
+      -5.551115123125783e-17,
+      3.469446951953614e-18,
+      0.9105199575424194,
+      1
+    ],
+    "n_n.colorsArray": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "n_n.positionsArray": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "n_n.convertedColorsArray": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "n_n.stopCount": 0,
+    "n_n.start": [
+      0,
+      0.5,
+      0,
+      0
+    ],
+    "n_n.end": [
+      1,
+      0.5,
+      0,
+      0
+    ],
+    "n_n.angle": 0,
+    "n_n.edges": 0,
+    "n_n.colorSpace": 0
   },
   "reference": {
     "file": "reference.png",

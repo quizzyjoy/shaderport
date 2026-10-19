@@ -130,6 +130,7 @@ for (const id of effectDirs) {
         defaults: collectDefaults(spec),
         enums: collectEnums(spec),
         uiTypes: collectUiTypes(spec),
+        resolved: spec.resolved ?? {},
         width: spec.reference?.width ?? 512,
         height: spec.reference?.height ?? 512,
         time: spec.reference?.time ?? 1.0,
@@ -187,6 +188,7 @@ const payload = items.map((it) => ({
     defaults: it.defaults,
     enums: it.enums,
     uiTypes: it.uiTypes,
+    resolved: it.resolved,
     compare: capture ? capture.base64 : null,
 }))
 
@@ -337,9 +339,29 @@ void main() {
                             }
                             if (!info.name.startsWith(`${prefix}.`)) continue
                             const offset = gl.getActiveUniforms(program, [i], gl.UNIFORM_OFFSET)[0]
-                            const path = info.name.slice(prefix.length + 1)
+                            // Array uniforms report "name[0]"; the spec stores the base path.
+                            const path = info.name.slice(prefix.length + 1).replace(/\[0\]$/, '')
                             const [node, ...rest] = path.split('.')
                             const member = rest.join('.')
+
+                            if (info.size > 1) {
+                                const array = item.resolved[path]
+                                if (Array.isArray(array)) {
+                                    const stride = gl.getActiveUniforms(program, [i], gl.UNIFORM_ARRAY_STRIDE)[0]
+                                    let components = 1
+                                    if (info.type === gl.FLOAT_VEC4) components = 4
+                                    else if (info.type === gl.FLOAT_VEC3) components = 3
+                                    else if (info.type === gl.FLOAT_VEC2) components = 2
+                                    for (let element = 0; element < info.size; element++) {
+                                        for (let c = 0; c < components; c++) {
+                                            const value = Number(array[element * components + c] ?? 0)
+                                            view.setFloat32(offset + element * stride + c * 4, value, true)
+                                        }
+                                    }
+                                }
+                                members.push({name: info.name, type: info.type, offset, size: info.size})
+                                continue
+                            }
 
                             let value = null
                             if (node === '_sys') {
@@ -355,10 +377,18 @@ void main() {
                             } else if (node === 'n_root') {
                                 value = member === '_opacity' ? 1 : undefined
                             } else if (node === 'n_n' || node === 'n_base') {
-                                if (member === '_opacity') value = 1
-                                else if (member === '_animTime') value = item.time
-                                else if (member === 'stopCount') value = Array.isArray(item.defaults[`${node}.stops`]) ? item.defaults[`${node}.stops`].length : 0
-                                else value = item.defaults[path]
+                                const resolvedValue = item.resolved[path]
+                                if (resolvedValue !== undefined && resolvedValue !== null) {
+                                    value = resolvedValue
+                                } else if (member === '_opacity') {
+                                    value = 1
+                                } else if (member === '_animTime') {
+                                    value = item.time
+                                } else if (member === 'stopCount') {
+                                    value = Array.isArray(item.defaults[`${node}.stops`]) ? item.defaults[`${node}.stops`].length : 0
+                                } else {
+                                    value = item.defaults[path]
+                                }
                             }
 
                             const nums = value === undefined || value === null

@@ -337,9 +337,17 @@ void EffectRenderer::ReflectUbo(ProgramState &state, const std::string &blockNam
             continue;
         }
         GLint offset = 0;
+        GLint stride = 0;
         GLuint index = static_cast<GLuint>(i);
         glGetActiveUniformsiv(state.program, 1, &index, GL_UNIFORM_OFFSET, &offset);
-        state.members.push_back({full.substr(prefix.size()), type, offset, size});
+        glGetActiveUniformsiv(state.program, 1, &index, GL_UNIFORM_ARRAY_STRIDE, &stride);
+        // Array uniforms report "name[0]"; the spec stores the base path.
+        std::string memberPath = full.substr(prefix.size());
+        const size_t bracket = memberPath.find("[0]");
+        if (bracket != std::string::npos) {
+            memberPath.erase(bracket, 3);
+        }
+        state.members.push_back({memberPath, type, offset, size, stride});
     }
 }
 
@@ -445,6 +453,11 @@ void EffectRenderer::PackProgram(const ProgramState &state, double time) {
 
     for (const auto &member : state.members) {
         if (member.size > 1) {
+            // Arrays (colour stops, converted colours) come from spec.resolved as a flat list.
+            const auto array = params_.find(member.path);
+            if (array != params_.end()) {
+                WriteArray(buffer, member, array->second);
+            }
             continue;
         }
         const size_t dot = member.path.find('.');
@@ -466,12 +479,15 @@ void EffectRenderer::PackProgram(const ProgramState &state, double time) {
                 values = {1.0f};
             } else if (leaf == "_animTime") {
                 values = {static_cast<float>(time)};
-            } else if (leaf == "stopCount") {
-                values = {0.0f};
             } else {
+                // Parameters are addressed by their full UBO path (e.g. "n_n.intensity",
+                // "n_base.colorA") because composite effects populate two nodes. Resolved
+                // values (including stopCount) take precedence over the empty default.
                 const auto it = params_.find(member.path);
                 if (it != params_.end()) {
                     values = it->second;
+                } else if (leaf == "stopCount") {
+                    values = {0.0f};
                 }
             }
         }
@@ -516,6 +532,39 @@ void EffectRenderer::WriteValue(std::vector<uint8_t> &buffer, const UboMember &m
         }
         default:
             break;
+    }
+}
+
+void EffectRenderer::WriteArray(std::vector<uint8_t> &buffer, const UboMember &member,
+                                const std::vector<float> &values) const {
+    int components = 1;
+    switch (member.type) {
+        case GL_FLOAT_VEC4:
+            components = 4;
+            break;
+        case GL_FLOAT_VEC3:
+            components = 3;
+            break;
+        case GL_FLOAT_VEC2:
+            components = 2;
+            break;
+        default:
+            components = 1;
+            break;
+    }
+    const size_t stride = member.arrayStride > 0
+                              ? static_cast<size_t>(member.arrayStride)
+                              : static_cast<size_t>(components) * sizeof(float);
+    for (GLint element = 0; element < member.size; ++element) {
+        for (int c = 0; c < components; ++c) {
+            const size_t index = static_cast<size_t>(element) * components + c;
+            const float value = index < values.size() ? values[index] : 0.0f;
+            const size_t offset = static_cast<size_t>(member.offset) +
+                                  static_cast<size_t>(element) * stride + c * sizeof(float);
+            if (offset + sizeof(float) <= buffer.size()) {
+                std::memcpy(buffer.data() + offset, &value, sizeof(float));
+            }
+        }
     }
 }
 

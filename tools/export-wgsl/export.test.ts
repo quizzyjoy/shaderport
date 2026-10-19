@@ -1,5 +1,6 @@
 /**
- * Exports self-contained WGSL for every effect registered in the upstream library.
+ * Exports self-contained WGSL for every effect registered in the upstream library, plus the
+ * FINAL (post-transform) uniform values for each node.
  *
  * Why this file is a vitest test: the upstream shaders use `'use gpu'` functions that must be
  * transformed by `unplugin-typegpu`, which is only wired into the upstream vitest config. A plain
@@ -11,12 +12,18 @@
 import {createHash} from 'node:crypto'
 import {mkdirSync, writeFileSync} from 'node:fs'
 import {join} from 'node:path'
-import {describe, it} from 'vitest'
-import {tgpu} from '@coreroot/gpu/kit'
+import {describe, it, vi} from 'vitest'
+import {d, tgpu} from '@coreroot/gpu/kit'
 import {composeNodeTree} from '@coreroot/gpu/composer'
 import {getAllShaders, getShaderByName} from '@coreroot/shaderRegistry'
-import type {GpuShaderDefinition} from '@coreroot/gpu/contract'
-import {buildRegistry, RootContainer} from './noiseHarness'
+import type {GpuShaderDefinition, RegistryNode, RegistryView} from '@coreroot/gpu/contract'
+import type {NodeMetadata} from '@coreroot/types'
+import {ArrayFieldHandle, createUniformStore} from '@coreroot/gpu/uniformStore'
+import type {FieldInit, UniformStore} from '@coreroot/gpu/uniformStore'
+import {SystemUniforms} from '@coreroot/gpu/kit/coords'
+import {createGpuUniformsMap} from '@coreroot/gpu/uniformBridge'
+import {RootContainer} from './noiseHarness'
+import type {NodeSpec} from './noiseHarness'
 
 const OUT = process.env.SP_OUT
 if (!OUT) throw new Error('SP_OUT is not set')
@@ -45,6 +52,117 @@ const needsChild = (def: GpuShaderDefinition): boolean => {
     return Boolean(d.requiresChild) || d.role === 'filter' || d.role === 'warp'
 }
 
+// ── GPU-free registry harness (copy of noiseHarness) that ALSO exposes the field handles ──────
+function mockRoot() {
+    const buffer = {
+        patch: vi.fn(),
+        write: vi.fn(),
+        destroy: vi.fn(),
+        $usage: vi.fn(function (this: unknown) {
+            return buffer
+        }),
+    }
+    return {createBuffer: vi.fn(() => buffer), createBindGroup: vi.fn(() => ({}))} as never
+}
+
+function bridgeFieldInits(def: GpuShaderDefinition, props: Record<string, unknown>, id: string): FieldInit[] {
+    const map = createGpuUniformsMap(def as never, props, id)
+    const inits: FieldInit[] = []
+    for (const [name, u] of Object.entries(map)) {
+        inits.push({name, initial: u.value, transform: u.transform, cpu: u.cpu, schema: u.schema})
+    }
+    return inits
+}
+
+function defaultsFor(def: GpuShaderDefinition): Record<string, unknown> {
+    const out: Record<string, unknown> = {}
+    for (const [name, cfg] of Object.entries(def.props)) out[name] = (cfg as {default: unknown}).default
+    return out
+}
+
+function buildRegistryWithHandles(specs: NodeSpec[]): {
+    registry: RegistryView
+    store: UniformStore
+    handlesById: Record<string, Record<string, unknown>>
+} {
+    const store = createUniformStore(mockRoot(), {systemSchema: SystemUniforms})
+    const handlesById: Record<string, Record<string, unknown>> = {}
+    for (const s of specs) {
+        const props = {...defaultsFor(s.def), ...(s.props ?? {})}
+        const propFields = bridgeFieldInits(s.def, props, s.id)
+        const synthetic: FieldInit[] = [{name: '_opacity', schema: d.f32, initial: s.metadata?.opacity ?? 1}]
+        if (s.def.animatedTime) synthetic.push({name: '_animTime', schema: d.f32, initial: s.animTime ?? 0})
+        if (s.def.extraFields) {
+            for (const [name, f] of Object.entries(s.def.extraFields)) {
+                synthetic.push({name, schema: f.schema, initial: f.initial})
+            }
+        }
+        handlesById[s.id] = store.defineNode(s.id, [...propFields, ...synthetic]) as never
+    }
+    store.finalize()
+
+    const nodes = new Map<string, RegistryNode>()
+    const childrenByParent = new Map<string, RegistryNode[]>()
+    for (const s of specs) {
+        nodes.set(s.id, {
+            id: s.id,
+            componentName: s.def.name,
+            parentId: s.parentId,
+            definition: s.def,
+            metadata: {blendMode: 'normal', opacity: undefined, renderOrder: 0, ...s.metadata} as NodeMetadata,
+            handles: handlesById[s.id],
+        })
+    }
+    for (const s of specs) {
+        if (s.parentId) {
+            const arr = childrenByParent.get(s.parentId) ?? []
+            arr.push(nodes.get(s.id)!)
+            childrenByParent.set(s.parentId, arr)
+        }
+    }
+    const root = specs.find((s) => s.parentId === null)!
+    const registry: RegistryView = {
+        rootId: root.id,
+        getNode: (id) => nodes.get(id),
+        getChildren: (parentId) => childrenByParent.get(parentId) ?? [],
+        resolveCustomId: () => null,
+        store,
+    }
+    return {registry, store, handlesById}
+}
+
+const serializeHandle = (handle: unknown): unknown => {
+    if (handle instanceof ArrayFieldHandle) {
+        return handle.array.slice()
+    }
+    const v = (handle as {value?: unknown}).value
+    if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string') return v
+    if (v && typeof v === 'object') {
+        const obj = v as Record<string, unknown>
+        const comps: number[] = []
+        for (const key of ['x', 'y', 'z', 'w']) {
+            if (obj[key] !== undefined) comps.push(Number(obj[key]))
+        }
+        if (comps.length > 0) return comps
+    }
+    return undefined
+}
+
+const collectResolved = (handlesById: Record<string, Record<string, unknown>>, ids: string[]): Record<string, unknown> => {
+    const out: Record<string, unknown> = {}
+    for (const id of ids) {
+        const handles = handlesById[id]
+        if (!handles) continue
+        for (const [name, handle] of Object.entries(handles)) {
+            if (name.startsWith('_')) continue
+            const path = (handle as {accessorPath?: string}).accessorPath ?? `${id}.${name}`
+            const value = serializeHandle(handle)
+            if (value !== undefined) out[path] = value
+        }
+    }
+    return out
+}
+
 interface ExportedPass {
     key: string
     file: string
@@ -52,7 +170,11 @@ interface ExportedPass {
     sha256: string
 }
 
-function exportPasses(def: GpuShaderDefinition, name: string, base?: GpuShaderDefinition): ExportedPass[] {
+function exportPasses(
+    def: GpuShaderDefinition,
+    name: string,
+    base?: GpuShaderDefinition,
+): {passes: ExportedPass[]; resolved: Record<string, unknown>} {
     const specs = base
         ? [
               {id: 'root', def: RootContainer, parentId: null},
@@ -64,7 +186,7 @@ function exportPasses(def: GpuShaderDefinition, name: string, base?: GpuShaderDe
               {id: 'n', def, parentId: 'root', metadata: {renderOrder: 0}, animTime: 0},
           ]
 
-    const {registry} = buildRegistry(specs as never)
+    const {registry, handlesById} = buildRegistryWithHandles(specs as never)
     const ir = composeNodeTree(registry) as unknown as {
         finalPass: {entry: unknown}
         rttPasses: Array<{textureKey?: string; fragment: {entry: unknown}}>
@@ -75,12 +197,17 @@ function exportPasses(def: GpuShaderDefinition, name: string, base?: GpuShaderDe
         ...ir.rttPasses.map((p, i) => ({key: `rtt_${p.textureKey ?? i}`, entry: p.fragment.entry})),
     ]
 
-    return passes.map((p) => {
-        const code = tgpu.resolve([p.entry as never], {names: 'strict'}) as unknown as string
-        const file = `${name}__${p.key}.wgsl`
-        writeFileSync(join(OUT as string, file), code, 'utf8')
-        return {key: p.key, file, bytes: Buffer.byteLength(code), sha256: sha256(code)}
-    })
+    const resolved = collectResolved(handlesById, base ? ['n', 'base'] : ['n'])
+
+    return {
+        passes: passes.map((p) => {
+            const code = tgpu.resolve([p.entry as never], {names: 'strict'}) as unknown as string
+            const file = `${name}__${p.key}.wgsl`
+            writeFileSync(join(OUT as string, file), code, 'utf8')
+            return {key: p.key, file, bytes: Buffer.byteLength(code), sha256: sha256(code)}
+        }),
+        resolved,
+    }
 }
 
 describe('shaderport export', () => {
@@ -100,7 +227,7 @@ describe('shaderport export', () => {
             const composite = needsChild(def) && entry.name !== 'Plasma'
 
             try {
-                const passes = exportPasses(def, entry.name, composite ? base : undefined)
+                const {passes, resolved} = exportPasses(def, entry.name, composite ? base : undefined)
                 effects.push({
                     name: entry.name,
                     category: d.category ?? entry.category ?? 'Uncategorized',
@@ -111,6 +238,7 @@ describe('shaderport export', () => {
                     passCount: passes.length,
                     passes,
                     props: propSchema(def),
+                    resolved,
                 })
             } catch (error) {
                 failures.push({name: entry.name, error: error instanceof Error ? error.message : String(error)})

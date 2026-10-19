@@ -179,9 +179,48 @@ function paramsFor(spec: EffectSpec, node: string): ParamValue[] {
   return out;
 }
 
+function rawNumbers(value: ESObject): number[] {
+  if (typeof value === 'number') {
+    return [value as number];
+  }
+  if (Array.isArray(value)) {
+    const source: number[] = value as number[];
+    const out: number[] = [];
+    for (let i = 0; i < source.length; i++) {
+      out.push(source[i]);
+    }
+    return out;
+  }
+  return [0];
+}
+
 export function getDefaultParams(id: string): ParamValue[] {
   const spec: EffectSpec = getEffect(id);
-  const out: ParamValue[] = paramsFor(spec, spec.ubo.node);
+  const out: ParamValue[] = [];
+
+  // Preferred path: the exporter already resolved transforms (colour spaces, stops arrays,
+  // px/percent props, enum codes, position Y flip) into final uniform values.
+  const resolved: Record<string, ESObject> = spec.resolved;
+  if (resolved !== undefined && resolved !== null) {
+    const keys: string[] = Object.keys(resolved);
+    if (keys.length > 0) {
+      for (let i = 0; i < keys.length; i++) {
+        const key: string = keys[i];
+        const leaf: string = key.substring(key.lastIndexOf('.') + 1);
+        if (leaf === '_animTime' || leaf === '_opacity') {
+          continue;
+        }
+        out.push({ name: key, values: rawNumbers(resolved[key]) });
+      }
+      return out;
+    }
+  }
+
+  // Fallback for older specs: convert the raw prop defaults.
+  const own: ParamValue[] = paramsFor(spec, spec.ubo.node);
+  for (let i = 0; i < own.length; i++) {
+    out.push(own[i]);
+  }
   if (spec.base !== null && spec.base !== undefined) {
     const baseSpec: EffectSpec = getEffect(spec.base.id);
     const baseParams: ParamValue[] = paramsFor(baseSpec, spec.base.node);

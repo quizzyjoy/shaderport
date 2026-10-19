@@ -18,6 +18,7 @@ struct UboMember {
     GLenum type = GL_FLOAT;
     GLint offset = 0;
     GLint size = 1;
+    GLint arrayStride = 0;
 };
 
 struct ProgramState {
@@ -65,6 +66,8 @@ private:
     void PackAndDraw(double time);
     void PackProgram(const ProgramState &state, double time);
     void WriteValue(std::vector<uint8_t> &buffer, const UboMember &member,
+                    const std::vector<float> &values) const;
+    void WriteArray(std::vector<uint8_t> &buffer, const UboMember &member,
                     const std::vector<float> &values) const;
     void CaptureFrame();
 
