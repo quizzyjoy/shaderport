@@ -217,7 +217,7 @@ struct Index {
         Text(Number(param.value).toFixed(2)).fontSize(11).fontColor(Color.White).width(42)
       }
       .width('100%')
-      .height(34)
+      .padding({ top: 2, bottom: 2 })
     } else if (param.kind === 'color') {
       Row({ space: 8 }) {
         Text(param.label).fontSize(11).fontColor(Color.White).width(92)
@@ -228,7 +228,7 @@ struct Index {
           .onChange((text: string) => this.updateParam(index, text))
       }
       .width('100%')
-      .height(34)
+      .padding({ top: 2, bottom: 2 })
     } else if (param.kind === 'select' && param.options.length > 0) {
       Row({ space: 8 }) {
         Text(param.label).fontSize(11).fontColor(Color.White).width(92)
@@ -239,7 +239,7 @@ struct Index {
           .onSelect((selected: number) => this.updateParam(index, param.optionValues[selected]))
       }
       .width('100%')
-      .height(34)
+      .padding({ top: 2, bottom: 2 })
     } else if (param.kind === 'position') {
       Column({ space: 2 }) {
         Text(param.label).fontSize(11).fontColor(Color.White).width('100%')
@@ -273,7 +273,7 @@ struct Index {
         }
       }
       .width('100%')
-      .height(62)
+      .padding({ top: 2, bottom: 2 })
     } else if (typeof param.value === 'boolean') {
       Row({ space: 8 }) {
         Text(param.label).fontSize(11).fontColor(Color.White).width(92)
@@ -281,7 +281,7 @@ struct Index {
           .onChange((isOn: boolean) => this.updateParam(index, isOn))
       }
       .width('100%')
-      .height(34)
+      .padding({ top: 2, bottom: 2 })
     }
   }
 
@@ -332,16 +332,22 @@ struct Index {
         .height('100%')
 
       Column() {
-        Row({ space: 10 }) {
-          Text(this.status).fontSize(13).fontColor(Color.White).layoutWeight(1)
-          Text(this.stats).fontSize(12).fontColor('#CCFFFFFF')
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 2 })
+        Column() {
+          Row({ space: 10 }) {
+            Text(this.status).fontSize(13).fontColor(Color.White).layoutWeight(1)
+            Text(this.stats).fontSize(12).fontColor('#CCFFFFFF')
+          }
+          .padding({ left: 12, right: 12, top: 8, bottom: 2 })
 
-        Text(this.info)
-          .fontSize(11)
-          .fontColor('#AAFFFFFF')
-          .padding({ left: 12, right: 12, bottom: 6 })
+          Text(this.info)
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .fontSize(11)
+            .fontColor('#AAFFFFFF')
+            .padding({ left: 12, right: 12, bottom: 6 })
+        }
+        .width('100%')
+        .backgroundColor('#B3000000')
 
         Blank()
 
@@ -349,38 +355,53 @@ struct Index {
           Row({ space: 6 }) {
             Button('‹')
               .fontSize(16)
-              .width(36)
-              .height(32)
+              .width(34)
+              .height(34)
               .backgroundColor('#33FFFFFF')
               .onClick(() => this.step(-1))
 
             Select(this.makeEffectOptions())
               .selected(this.effectIndex())
               .value(this.effectName())
+              .height(34)
               .layoutWeight(1)
               .onSelect((index: number) => this.select(this.effects[index].id))
 
             Button('›')
               .fontSize(16)
-              .width(36)
-              .height(32)
+              .width(34)
+              .height(34)
               .backgroundColor('#33FFFFFF')
               .onClick(() => this.step(1))
           }
           .width('100%')
 
-          Scroll() {
-            Column() {
-              ForEach(this.params, (param: ParamDescriptor, index: number) => {
-                this.paramRow(param, index)
-              }, (param: ParamDescriptor) => param.path)
+          Stack({ alignContent: Alignment.Bottom }) {
+            Scroll() {
+              Column() {
+                ForEach(this.params, (param: ParamDescriptor, index: number) => {
+                  this.paramRow(param, index)
+                }, (param: ParamDescriptor) => param.path)
+              }
+              .width('100%')
+              .alignItems(HorizontalAlign.Start)
+              .padding({ bottom: 12 })
             }
+            .height(240)
             .width('100%')
-            .alignItems(HorizontalAlign.Start)
+            .scrollBar(BarState.Auto)
+
+            // Fade the clipped last row so the scroll boundary reads as intentional.
+            Column()
+              .height(18)
+              .width('100%')
+              .linearGradient({
+                angle: 180,
+                colors: [['#00000000', 0.0], ['#F2000000', 1.0]],
+              })
           }
-          .height(160)
+          .height(240)
           .width('100%')
-          .scrollBar(BarState.Auto)
 
           Row({ space: 8 }) {
             Button('Reset')
@@ -403,10 +424,11 @@ struct Index {
               .fontColor('#CCFFFFFF')
           }
           .width('100%')
+          .margin({ top: 4 })
         }
         .width('100%')
         .padding({ left: 12, right: 12, bottom: 10, top: 6 })
-        .backgroundColor('#CC000000')
+        .backgroundColor('#F2000000')
       }
       .width('100%')
       .height('100%')
