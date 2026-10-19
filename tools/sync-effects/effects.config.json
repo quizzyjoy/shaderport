@@ -89,5 +89,23 @@
     "id": "flowing-gradient",
     "layer": "background",
     "cost": "low"
+  },
+  {
+    "name": "Aurora",
+    "id": "aurora",
+    "layer": "background",
+    "cost": "medium"
+  },
+  {
+    "name": "Vignette",
+    "id": "vignette",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Glow",
+    "id": "glow",
+    "layer": "main",
+    "cost": "medium"
   }
 ]

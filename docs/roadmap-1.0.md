@@ -56,15 +56,13 @@
 | 3 | `Blur` | filter | 可分离高斯，两趟 RTT ping-pong |
 | 4 | `MeshGradient` | generator | 色标数组 + 每帧 `meshAnchors`（导出时烘焙） |
 | 4 | `FlowingGradient` | generator | 每帧预转换色 `convA..D`（导出时烘焙） |
+| 4 | `Aurora` | generator | 透明光幕；resolved 统一后 alpha 也一致 |
+| 4 | `Vignette` | filter（点式内联） | 1 pass，点式滤镜样本 |
+| 4 | `Glow` | filter（RTT） | 2 pass，模糊 + 合成链 |
 
 备选：`Vignette`、`Glow`。
 
-**延后（需要先补基础设施，不计入首批）**
-
-| 效果 | 阻塞点 |
-|---|---|
-| `Aurora` | 透明效果的 alpha 语义未对齐：参考渲染器与设备帧的 RGB 差异呈 alpha 依赖（设备 alpha 约 2×），需先确认 EGL 窗口表面的 alpha/预乘约定 |
-| `Vignette` / `Glow` | 等 Aurora 的透明/预乘约定确定后再接（都是 filter） |
+**首批状态**：17 个全部通过设备像素验证（`Aurora` 之前的 alpha 差异确认是输入值不一致，不是 EGL 预乘问题；统一使用 `spec.resolved` 后 max ≤ 1）。
 
 > 已落地：`spec.resolved` 现在由 `tools/export-wgsl` 从上游 uniform store 导出**最终值**（颜色在 P3-linear 工作空间、位置已完成 Y 翻转、枚举已编码、色标数组已打包）。导出器还会执行一次 `ir.onBeforeRender`，把每帧 CPU 生成的 extraFields（`meshAnchors` / `convA..D`）写回 store 并写入 resolved；native/JS 打包器优先使用 resolved，数组按 `GL_UNIFORM_ARRAY_STRIDE` 写入。
 >

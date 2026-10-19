@@ -148,6 +148,40 @@
       "passes": 1,
       "requires": [],
       "path": "effects/flowing-gradient"
+    },
+    {
+      "id": "aurora",
+      "name": "Aurora",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "medium",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/aurora"
+    },
+    {
+      "id": "vignette",
+      "name": "Vignette",
+      "category": "Stylize",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/vignette"
+    },
+    {
+      "id": "glow",
+      "name": "Glow",
+      "category": "Stylize",
+      "layer": "main",
+      "cost": "medium",
+      "passes": 2,
+      "requires": [
+        "input"
+      ],
+      "path": "effects/glow"
     }
   ]
 }
