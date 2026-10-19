@@ -4,6 +4,7 @@
 #include <hilog/log.h>
 
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 
 #undef LOG_DOMAIN
@@ -159,6 +160,19 @@ void EffectRenderer::SetPointer(float x, float y, float active) {
     pointerActive_ = active;
 }
 
+void EffectRenderer::SetFixedTime(double time, bool fixed) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    fixedTime_ = time;
+    useFixedTime_ = fixed;
+}
+
+void EffectRenderer::RequestCapture(const std::string &path) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    capturePath_ = path;
+    captureRequested_ = true;
+    captureReady_.store(false);
+}
+
 void EffectRenderer::Resize(int width, int height) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (width > 0 && height > 0) {
@@ -187,13 +201,17 @@ void EffectRenderer::OnFrame(long long timestamp) {
         if (firstTimestamp_ == 0) {
             firstTimestamp_ = timestamp;
         }
-        const double time = static_cast<double>(timestamp - firstTimestamp_) / 1e9;
+        const double time = useFixedTime_ ? fixedTime_
+                                         : static_cast<double>(timestamp - firstTimestamp_) / 1e9;
         if (hasPendingShader_) {
             BuildProgram();
             hasPendingShader_ = false;
         }
         if (program_ != 0) {
             PackAndDraw(time);
+            if (captureRequested_ && !capturePath_.empty()) {
+                CaptureFrame();
+            }
         }
     }
 
@@ -386,6 +404,32 @@ void EffectRenderer::PackAndDraw(double time) {
     glBindVertexArray(vao_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+}
+
+void EffectRenderer::CaptureFrame() {
+    if (width_ <= 0 || height_ <= 0) {
+        captureRequested_ = false;
+        captureReady_.store(true);
+        return;
+    }
+    const size_t pixelBytes = static_cast<size_t>(width_) * static_cast<size_t>(height_) * 4;
+    std::vector<uint8_t> pixels(pixelBytes, 0);
+    glReadPixels(0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+    FILE *file = std::fopen(capturePath_.c_str(), "wb");
+    if (file != nullptr) {
+        const uint32_t header[2] = {static_cast<uint32_t>(width_), static_cast<uint32_t>(height_)};
+        std::fwrite(header, sizeof(uint32_t), 2, file);
+        std::fwrite(pixels.data(), 1, pixels.size(), file);
+        std::fclose(file);
+        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "capture %{public}s %{public}dx%{public}d",
+                     capturePath_.c_str(), width_, height_);
+    } else {
+        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG, "capture open failed: %{public}s",
+                     capturePath_.c_str());
+    }
+    captureRequested_ = false;
+    captureReady_.store(true);
 }
 
 void EffectRenderer::Dispose() {

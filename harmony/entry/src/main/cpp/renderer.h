@@ -6,6 +6,7 @@
 #include <native_vsync/native_vsync.h>
 #include <native_window/external_window.h>
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -28,6 +29,9 @@ public:
                    const std::string &instanceName);
     void SetParam(const std::string &name, const std::vector<float> &values);
     void SetPointer(float x, float y, float active);
+    void SetFixedTime(double time, bool fixed);
+    void RequestCapture(const std::string &path);
+    bool CaptureReady() const { return captureReady_.load(); }
     void Resize(int width, int height);
     void Dispose();
 
@@ -42,6 +46,7 @@ private:
     bool BuildProgram();
     void ReflectUbo();
     void PackAndDraw(double time);
+    void CaptureFrame();
     void WriteValue(std::vector<uint8_t> &buffer, const UboMember &member,
                     const std::vector<float> &values) const;
 
@@ -73,6 +78,12 @@ private:
     float pointerX_ = 0.5f;
     float pointerY_ = 0.5f;
     float pointerActive_ = 0.0f;
+
+    bool useFixedTime_ = false;
+    double fixedTime_ = 0.0;
+    std::string capturePath_;
+    bool captureRequested_ = false;
+    std::atomic<bool> captureReady_{false};
 
     bool running_ = false;
     bool initialized_ = false;

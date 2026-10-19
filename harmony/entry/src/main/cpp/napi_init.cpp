@@ -111,6 +111,37 @@ napi_value NativeSetPointer(napi_env env, napi_callback_info info) {
     return MakeUndefined(env);
 }
 
+napi_value NativeSetTime(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 2) {
+        return MakeUndefined(env);
+    }
+    double time = 0.0;
+    bool fixed = true;
+    napi_get_value_double(env, args[0], &time);
+    napi_get_value_bool(env, args[1], &fixed);
+    EffectRenderer::Get().SetFixedTime(time, fixed);
+    return MakeUndefined(env);
+}
+
+napi_value NativeCapture(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return MakeBoolean(env, false);
+    }
+    EffectRenderer::Get().RequestCapture(GetString(env, args[0]));
+    return MakeBoolean(env, true);
+}
+
+napi_value NativeCaptureReady(napi_env env, napi_callback_info info) {
+    (void)info;
+    return MakeBoolean(env, EffectRenderer::Get().CaptureReady());
+}
+
 napi_value NativeResize(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2] = {nullptr};
@@ -142,6 +173,9 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"nativeSetShader", nullptr, NativeSetShader, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetParam", nullptr, NativeSetParam, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetPointer", nullptr, NativeSetPointer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"nativeSetTime", nullptr, NativeSetTime, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"nativeCapture", nullptr, NativeCapture, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"nativeCaptureReady", nullptr, NativeCaptureReady, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeResize", nullptr, NativeResize, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeDispose", nullptr, NativeDispose, nullptr, nullptr, nullptr, napi_default, nullptr},
     };

@@ -1,12 +1,23 @@
 import { display } from '@kit.ArkUI';
-import { nativeInit, nativeResize, nativeSetParam, nativeSetShader, nativeDispose } from 'libentry.so';
+import {
+  nativeCapture,
+  nativeCaptureReady,
+  nativeDispose,
+  nativeInit,
+  nativeResize,
+  nativeSetParam,
+  nativeSetShader,
+  nativeSetTime,
+} from 'libentry.so';
 import {
   EffectSpec,
+  EffectSummary,
   ParamValue,
   getDefaultParams,
   getEffect,
   getShaderSource,
   initShaderPort,
+  listEffects,
 } from '@quizzyjoy/shaderport';
 
 @Entry
@@ -14,29 +25,68 @@ import {
 struct Index {
   private controller: XComponentController = new XComponentController();
   @State status: string = 'booting';
+  @State effects: EffectSummary[] = [];
+  @State current: string = '';
   private started: boolean = false;
+  private filesDir: string = '';
+  private autoIndex: number = 0;
 
   aboutToAppear(): void {
     initShaderPort(getContext(this).resourceManager);
+    this.filesDir = getContext(this).filesDir;
+    this.effects = listEffects();
   }
 
   aboutToDisappear(): void {
     nativeDispose();
   }
 
-  private loadPlasma(): void {
+  private apply(id: string): void {
     try {
-      const spec: EffectSpec = getEffect('plasma');
-      const fragment: string = getShaderSource('plasma', 'fragment');
-      nativeSetShader(fragment, spec.ubo.block, spec.ubo.instance);
-      const params: ParamValue[] = getDefaultParams('plasma');
+      const spec: EffectSpec = getEffect(id);
+      nativeSetShader(getShaderSource(id, 'fragment'), spec.ubo.block, spec.ubo.instance);
+      const params: ParamValue[] = getDefaultParams(id);
       for (let i = 0; i < params.length; i++) {
         nativeSetParam(params[i].name, params[i].values);
       }
-      this.status = `plasma · ${params.length} params · ubo ${spec.ubo.block}`;
+      // Freeze at the reference time so the captured frame can be diffed, then unfreeze.
+      nativeSetTime(1.0, true);
+      this.current = id;
+      this.status = `${id} · ${params.length} params`;
+      const path: string = `${this.filesDir}/capture-${id}.rgba`;
+      setTimeout(() => {
+        nativeCapture(path);
+        this.pollCapture(id);
+      }, 400);
     } catch (error) {
       this.status = `error: ${error}`;
     }
+  }
+
+  private pollCapture(id: string): void {
+    let attempts: number = 0;
+    const timer: number = setInterval(() => {
+      attempts++;
+      if (nativeCaptureReady()) {
+        clearInterval(timer);
+        nativeSetTime(0, false);
+        this.status = `${id} captured · ${this.current}`;
+      } else if (attempts > 50) {
+        clearInterval(timer);
+        this.status = `${id} capture timeout`;
+      }
+    }, 100);
+  }
+
+  private applyNext(): void {
+    if (this.autoIndex >= this.effects.length) {
+      this.status = 'all effects captured';
+      return;
+    }
+    const id: string = this.effects[this.autoIndex].id;
+    this.autoIndex++;
+    this.apply(id);
+    setTimeout(() => this.applyNext(), 1800);
   }
 
   private start(surfaceId: string): void {
@@ -50,7 +100,7 @@ struct Index {
       return;
     }
     this.started = true;
-    this.loadPlasma();
+    this.applyNext();
   }
 
   build() {
@@ -73,10 +123,33 @@ struct Index {
         .width('100%')
         .height('100%')
 
-      Text(this.status)
-        .fontSize(14)
-        .fontColor(Color.White)
+      Column() {
+        Text(this.status)
+          .fontSize(14)
+          .fontColor(Color.White)
+          .padding(12)
+
+        Blank()
+
+        Row({ space: 8 }) {
+          ForEach(this.effects, (item: EffectSummary) => {
+            Button(item.name)
+              .fontSize(12)
+              .height(34)
+              .padding({ left: 12, right: 12 })
+              .backgroundColor(this.current === item.id ? '#5b18ca' : '#33FFFFFF')
+              .onClick(() => {
+                this.autoIndex = this.effects.length;
+                this.apply(item.id);
+              })
+          }, (item: EffectSummary) => item.id)
+        }
         .padding(12)
+      }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
     .height('100%')
