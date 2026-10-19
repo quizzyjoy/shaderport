@@ -57,6 +57,7 @@
 | 指针输入 | 注入 swipe → `pointer down 0.2248,0.3405`；CursorRipples 画面扰动 |
 | 尺寸变化 | fold close/open → `resize 1080x2296 ↔ 2224x2288`，RTT 重建正常 |
 | 参数面板 | spec 驱动 slider / color / select / position / boolean，实时生效 |
+| 工具栏开关 | Mate 80 复验：`Perf` 隐藏/显示 FPS+CPU，`Panel` 隐藏/显示参数面板，面板隐藏后画面占满 |
 
 ## 4. 性能实测（Mate 80 / VYG-AL30，1280×2598）
 
