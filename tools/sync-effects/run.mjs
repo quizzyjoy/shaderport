@@ -144,6 +144,11 @@ for (const entry of config) {
         passes: specPasses,
         props,
         defaults,
+        // Reference-diff thresholds. Strict by default; driver-sensitive noise effects widen
+        // them per entry (see effects.config.json).
+        validation: entry.validation ?? {
+            pixelDiff: {meanAbs: 1.0, over8Ratio: 0.01, bandMean: 2.0},
+        },
         // FINAL post-transform uniform values exported from the upstream uniform store
         // (colour-stops arrays, converted colours, px/percent props, enums, positions).
         resolved: effect.resolved ?? {},

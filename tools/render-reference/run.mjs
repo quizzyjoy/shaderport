@@ -147,6 +147,9 @@ const captureIndex = args.indexOf('--capture')
 const capturePath = captureIndex >= 0 ? args[captureIndex + 1] : null
 const timeIndex = args.indexOf('--time')
 const timeOverride = timeIndex >= 0 ? Number(args[timeIndex + 1]) : null
+// Force the strict thresholds even for effects that widen them in their spec.
+const strictMode = args.includes('--strict')
+const STRICT_TOLERANCE = {meanAbs: 1.0, over8Ratio: 0.01, bandMean: 2.0}
 let capture = null
 
 if (capturePath) {
@@ -169,7 +172,13 @@ if (capturePath) {
         console.error(`[render-reference] capture size mismatch: ${bytes.length} != ${width * height * 4}`)
         process.exit(2)
     }
-    capture = {id, width, height, base64: bytes.toString('base64')}
+    capture = {
+        id,
+        width,
+        height,
+        base64: bytes.toString('base64'),
+        tolerance: strictMode ? STRICT_TOLERANCE : (target.spec.validation?.pixelDiff ?? STRICT_TOLERANCE),
+    }
     items.length = 0
     items.push({...target, width, height, time: timeOverride ?? target.spec.reference?.time ?? 1.0})
 } else if (timeOverride !== null) {
@@ -646,25 +655,52 @@ for (const result of results.items) {
             writeFileSync(join(diffDir, `${result.id}-capture.png`), Buffer.from(result.capturePng.split(',')[1], 'base64'))
         }
         if (result.diff.error) {
-            console.error(`[render-reference] diff ${result.id}: ${result.diff.error}`)
+            console.error(`[render-reference] diff ${result.id}: FAIL ${result.diff.error}`)
             process.exitCode = 1
         } else {
+            const tolerance = capture.tolerance
+            const bandDelta = result.diff.bands
+                ? Math.max(...result.diff.bands.ref.map((value, i) => Math.abs(value - result.diff.bands.cap[i])))
+                : 0
+            const passed =
+                result.diff.meanAbs <= tolerance.meanAbs &&
+                result.diff.over8Ratio <= tolerance.over8Ratio &&
+                bandDelta <= tolerance.bandMean
+
+            result.pass = passed
+            result.tolerance = tolerance
+            result.bandDelta = bandDelta
+
             console.log(
-                `[render-reference] diff ${result.id}: meanAbs=${result.diff.meanAbs.toFixed(2)} ` +
-                    `max=${result.diff.maxAbs} over8=${(result.diff.over8Ratio * 100).toFixed(2)}% ` +
-                    `over16=${(result.diff.over16Ratio * 100).toFixed(2)}% ` +
+                `[render-reference] diff ${result.id}: ${passed ? 'PASS' : 'FAIL'} ` +
+                    `meanAbs=${result.diff.meanAbs.toFixed(2)}<=${tolerance.meanAbs} ` +
+                    `max=${result.diff.maxAbs} ` +
+                    `over8=${(result.diff.over8Ratio * 100).toFixed(2)}%<=${(tolerance.over8Ratio * 100).toFixed(1)}% ` +
+                    `bandDelta=${bandDelta.toFixed(1)}<=${tolerance.bandMean} ` +
                     `(${capture.width}x${capture.height}, ${result.passCount}p)`,
             )
-            if (result.diff.bands) {
+            if (!passed) {
                 console.log(`[render-reference]   ref bands: ${result.diff.bands.ref.join(' ')}`)
                 console.log(`[render-reference]   cap bands: ${result.diff.bands.cap.join(' ')}`)
                 console.log(`[render-reference]   dif bands: ${result.diff.bands.diff.join(' ')}`)
-                console.log(`[render-reference]   ref alpha: ${result.diff.bands.refAlpha.join(' ')}`)
-                console.log(`[render-reference]   cap alpha: ${result.diff.bands.capAlpha.join(' ')}`)
-            }
-            if (result.diff.over8Ratio > 0.05) {
                 process.exitCode = 1
             }
+
+            writeFileSync(
+                diffPath,
+                JSON.stringify(
+                    {
+                        id: result.id,
+                        capture: capturePath,
+                        ...result.diff,
+                        tolerance,
+                        bandDelta,
+                        pass: passed,
+                    },
+                    null,
+                    2,
+                ),
+            )
         }
         continue
     }

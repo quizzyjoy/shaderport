@@ -96,7 +96,10 @@
 3. `shader.glsl` 头部保留 MIT 版权声明；`THIRD_PARTY_NOTICES.md` 同步
 4. `glsl-gate` 编译 + 链接通过
 5. 真机渲染通过，记录 fps 与分辨率
-6. 参考图 diff 在阈值内
+6. 参考图 diff 在 `spec.validation.pixelDiff` 阈值内
+   - 默认严格：`meanAbs ≤ 1`、`over8 ≤ 1%`、10 段亮度均值差 ≤ 2
+   - 驱动敏感的高频噪声（当前仅 `PerlinNoise`）可在 spec 中放宽（`meanAbs ≤ 8`、`over8 ≤ 15%`、band ≤ 8）
+   - CI 可用 `--strict` 强制全部走严格阈值
 7. 进入 `rawfile/effects/index.json` 与 README 效果表
 
 ## 9. 风险

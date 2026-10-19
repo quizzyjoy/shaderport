@@ -199,6 +199,13 @@
     "strokePosition": "center",
     "colorSpace": "linear"
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 1,
+      "over8Ratio": 0.01,
+      "bandMean": 2
+    }
+  },
   "resolved": {
     "n_n.origin": "center",
     "n_n.color": [

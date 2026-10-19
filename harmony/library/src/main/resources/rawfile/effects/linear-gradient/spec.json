@@ -178,6 +178,13 @@
     "edges": "stretch",
     "colorSpace": "linear"
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 1,
+      "over8Ratio": 0.01,
+      "bandMean": 2
+    }
+  },
   "resolved": {
     "n_n.colorA": [
       0.1860339194536209,

@@ -101,6 +101,13 @@
     "intensity": 1,
     "edges": "stretch"
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 1,
+      "over8Ratio": 0.01,
+      "bandMean": 2
+    }
+  },
   "resolved": {
     "n_n.center": [
       0.5,

@@ -192,6 +192,13 @@
     "stops": null,
     "colorSpace": "linear"
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 1,
+      "over8Ratio": 0.01,
+      "bandMean": 2
+    }
+  },
   "resolved": {
     "n_n.density": 2,
     "n_n.speed": 2,

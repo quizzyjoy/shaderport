@@ -45,7 +45,14 @@
     "name": "PerlinNoise",
     "id": "perlin-noise",
     "layer": "background",
-    "cost": "low"
+    "cost": "low",
+    "validation": {
+      "pixelDiff": {
+        "meanAbs": 8.0,
+        "over8Ratio": 0.15,
+        "bandMean": 8.0
+      }
+    }
   },
   {
     "name": "SimplexNoise",

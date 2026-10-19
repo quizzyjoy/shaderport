@@ -56,6 +56,16 @@ export interface EffectBase {
   node: string;
 }
 
+export interface PixelDiffTolerance {
+  meanAbs: number;
+  over8Ratio: number;
+  bandMean: number;
+}
+
+export interface EffectValidation {
+  pixelDiff: PixelDiffTolerance;
+}
+
 export interface EffectSpec {
   schema: number;
   id: string;
@@ -74,6 +84,7 @@ export interface EffectSpec {
   props: Record<string, PropSpec>;
   defaults: Record<string, ESObject>;
   resolved: Record<string, ESObject>;
+  validation?: EffectValidation;
   reference: EffectReference;
 }
 

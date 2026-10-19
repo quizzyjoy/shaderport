@@ -149,6 +149,13 @@
     "thickness": 0.5,
     "phase": 0
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 1,
+      "over8Ratio": 0.01,
+      "bandMean": 2
+    }
+  },
   "resolved": {
     "n_n.center": [
       0.5,

@@ -66,6 +66,13 @@
   "defaults": {
     "intensity": 50
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 1,
+      "over8Ratio": 0.01,
+      "bandMean": 2
+    }
+  },
   "resolved": {
     "n_n.intensity": 50,
     "n_base.density": 2,

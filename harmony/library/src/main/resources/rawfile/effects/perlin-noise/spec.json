@@ -173,6 +173,13 @@
     "seed": 0,
     "speed": 1
   },
+  "validation": {
+    "pixelDiff": {
+      "meanAbs": 8,
+      "over8Ratio": 0.15,
+      "bandMean": 8
+    }
+  },
   "resolved": {
     "n_n.colorA": [
       1,
