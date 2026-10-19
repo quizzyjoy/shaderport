@@ -86,8 +86,13 @@ for (const entry of config) {
     }
 
     const effectDir = join(effectsRoot, id)
+    // Keep the rendered reference across regeneration: it is produced by tools/render-reference,
+    // not by this tool, so deleting the directory would silently drop it.
+    const referencePath = join(effectDir, 'reference.png')
+    const referenceBytes = existsSync(referencePath) ? readFileSync(referencePath) : null
     rmSync(effectDir, {recursive: true, force: true})
     mkdirSync(join(effectDir, 'passes'), {recursive: true})
+    if (referenceBytes) writeFileSync(referencePath, referenceBytes)
 
     const specPasses = passes.map((p, i) => {
         // Always POSIX separators in the spec: the same value is consumed by ArkTS/native
@@ -136,7 +141,12 @@ for (const entry of config) {
         passes: specPasses,
         props,
         defaults,
-        reference: null,
+        reference: {
+            file: 'reference.png',
+            width: 512,
+            height: 512,
+            time: 1.0,
+        },
         provenance: {
             class: 'ported',
             repo: 'shader-effects-inc/shaders',
@@ -157,6 +167,9 @@ for (const entry of config) {
     for (const p of specPasses) {
         copyFileSync(join(effectDir, p.file), join(rawDir, p.file))
     }
+    // References are produced by tools/render-reference; mirror them so a later sync never
+    // leaves the HAR without the image that spec.reference points at.
+    if (referenceBytes) copyFileSync(referencePath, join(rawDir, 'reference.png'))
 
     indexEntries.push({
         id,

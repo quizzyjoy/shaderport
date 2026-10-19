@@ -1,0 +1,13 @@
+{
+  "name": "shaderport-render-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offscreen reference renderer for shaderport effects (WebGL2 + spec-driven UBO packing).",
+  "scripts": {
+    "render": "node run.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "24.15.0"
+  }
+}

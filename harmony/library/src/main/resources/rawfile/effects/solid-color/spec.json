@@ -45,7 +45,12 @@
   "defaults": {
     "color": "#5b18ca"
   },
-  "reference": null,
+  "reference": {
+    "file": "reference.png",
+    "width": 512,
+    "height": 512,
+    "time": 1
+  },
   "provenance": {
     "class": "ported",
     "repo": "shader-effects-inc/shaders",

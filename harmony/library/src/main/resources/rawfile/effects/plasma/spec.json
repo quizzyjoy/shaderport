@@ -191,7 +191,12 @@
     "stops": null,
     "colorSpace": "linear"
   },
-  "reference": null,
+  "reference": {
+    "file": "reference.png",
+    "width": 512,
+    "height": 512,
+    "time": 1
+  },
   "provenance": {
     "class": "ported",
     "repo": "shader-effects-inc/shaders",
