@@ -68,6 +68,66 @@
         "input"
       ],
       "path": "effects/blur"
+    },
+    {
+      "id": "marble",
+      "name": "Marble",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/marble"
+    },
+    {
+      "id": "perlin-noise",
+      "name": "PerlinNoise",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/perlin-noise"
+    },
+    {
+      "id": "simplex-noise",
+      "name": "SimplexNoise",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/simplex-noise"
+    },
+    {
+      "id": "block-noise",
+      "name": "BlockNoise",
+      "category": "Textures",
+      "layer": "background",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/block-noise"
+    },
+    {
+      "id": "circle",
+      "name": "Circle",
+      "category": "Shapes",
+      "layer": "main",
+      "cost": "very-low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/circle"
+    },
+    {
+      "id": "ripples",
+      "name": "Ripples",
+      "category": "Textures",
+      "layer": "main",
+      "cost": "low",
+      "passes": 1,
+      "requires": [],
+      "path": "effects/ripples"
     }
   ]
 }

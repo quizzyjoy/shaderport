@@ -7,13 +7,15 @@ import {
   EffectSummary,
   ParamValue,
   PassSource,
+  PropSpec,
   ValidationResult,
 } from './types';
 
 let resource: resourceManager.ResourceManager | null = null;
 
 const COLOR_SPACE: string[] = ['linear', 'oklch', 'oklab', 'hsl', 'hsv', 'lch'];
-const EDGES: string[] = ['stretch', 'wrap', 'mirror', 'transparent'];
+// Order matches the upstream transformEdges mapping: stretch=0, transparent=1, mirror=2, wrap=3.
+const EDGES: string[] = ['stretch', 'transparent', 'mirror', 'wrap'];
 
 /**
  * Bind the package to the host application's resource manager. Must be called once before any
@@ -104,7 +106,26 @@ function enumValue(value: string): number {
   return 0;
 }
 
-function toNumbers(value: ESObject): number[] {
+/** Enum props carry their value order in ui.options; prefer it over the built-in tables. */
+function optionIndex(ui: ESObject, value: string): number {
+  if (ui === undefined || ui === null) {
+    return -1;
+  }
+  const options: ESObject = (ui as Record<string, ESObject>).options;
+  if (options === undefined || options === null || !Array.isArray(options)) {
+    return -1;
+  }
+  const list: ESObject[] = options as ESObject[];
+  for (let i = 0; i < list.length; i++) {
+    const option: Record<string, ESObject> = list[i] as Record<string, ESObject>;
+    if ((option.value as string) === value) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function toNumbers(value: ESObject, ui: ESObject): number[] {
   if (typeof value === 'number') {
     return [value as number];
   }
@@ -112,6 +133,10 @@ function toNumbers(value: ESObject): number[] {
     const text: string = value as string;
     if (text.startsWith('#')) {
       return hexToLinear(text);
+    }
+    const fromUi: number = optionIndex(ui, text);
+    if (fromUi >= 0) {
+      return [fromUi];
     }
     return [enumValue(text)];
   }
@@ -126,7 +151,13 @@ function toNumbers(value: ESObject): number[] {
   if (value !== null && value !== undefined) {
     const point: Record<string, number> = value as Record<string, number>;
     if (point.x !== undefined) {
-      return [point.x, point.y ?? 0];
+      const y: number = point.y ?? 0;
+      // transformPosition inverts Y: prop 0 = top, uniform 1 = top.
+      const uiType: ESObject = ui === undefined || ui === null ? '' : (ui as Record<string, ESObject>).type;
+      if (uiType === 'position') {
+        return [point.x, 1 - y];
+      }
+      return [point.x, y];
     }
   }
   return [0];
@@ -142,7 +173,8 @@ function paramsFor(spec: EffectSpec, node: string): ParamValue[] {
   for (let i = 0; i < names.length; i++) {
     const name: string = names[i];
     const value: ESObject = spec.defaults[name];
-    out.push({ name: `n_${node}.${name}`, values: toNumbers(value) });
+    const prop: PropSpec = spec.props[name];
+    out.push({ name: `n_${node}.${name}`, values: toNumbers(value, prop.ui) });
   }
   return out;
 }

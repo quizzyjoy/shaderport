@@ -46,16 +46,26 @@
 | 1 | `LinearGradient` | generator | 颜色插值 / 颜色空间 |
 | 1 | `RadialGradient` | generator | UV 中心与 aspect |
 | 1 | `Plasma` | generator | 时间驱动 + 多正弦；主视效可用 |
-| 2 | `MeshGradient` | generator | 8 色数组 UBO |
+| 2 | `Marble` | generator | 噪声扭曲 + 三色，背景层 |
 | 2 | `PerlinNoise` | generator | 噪声基座（后续效果依赖） |
-| 2 | `Aurora` | generator | 分层光幕，背景层重点样本 |
-| 2 | `FlowingGradient` | generator | 噪声扭曲渐变 |
+| 2 | `SimplexNoise` | generator | 第二种噪声基座 |
+| 2 | `BlockNoise` | generator | 块状噪声（低填充率档） |
 | 3 | `Circle` | generator | SDF 形状 |
 | 3 | `Ripples` | generator | 同心波纹，节拍映射载体 |
 | 3 | `Twirl` | warp | 首个消费输入的效果（UV 折叠，单 pass） |
 | 3 | `Blur` | filter | 可分离高斯，两趟 RTT ping-pong |
 
 备选：`Vignette`、`Glow`。
+
+**延后（需要先补基础设施，不计入首批）**
+
+| 效果 | 阻塞点 |
+|---|---|
+| `MeshGradient` | `colorsArray` / `positionsArray` / `convertedColorsArray` / `stopCount` 是**数组与派生颜色**，需要在构建期导出 resolved uniform（含 OKLab 转换），不能只靠 props 默认值 |
+| `FlowingGradient` | `convA..convD` 是色值的 OKLCh 预转换结果，同上 |
+| `Aurora` | 透明效果的 alpha 语义未对齐：参考渲染器与设备帧的 RGB 差异呈 alpha 依赖（设备 alpha 约 2×），需先确认 EGL 窗口表面的 alpha/预乘约定 |
+
+→ 这三项与 `Vignette`/`Glow` 一起，放到"派生 uniform 导出"落地后的下一批。
 
 ## 6. 决策记录
 

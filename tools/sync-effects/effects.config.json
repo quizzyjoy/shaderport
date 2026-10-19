@@ -34,5 +34,41 @@
     "id": "blur",
     "layer": "main",
     "cost": "medium"
+  },
+  {
+    "name": "Marble",
+    "id": "marble",
+    "layer": "background",
+    "cost": "low"
+  },
+  {
+    "name": "PerlinNoise",
+    "id": "perlin-noise",
+    "layer": "background",
+    "cost": "low"
+  },
+  {
+    "name": "SimplexNoise",
+    "id": "simplex-noise",
+    "layer": "background",
+    "cost": "low"
+  },
+  {
+    "name": "BlockNoise",
+    "id": "block-noise",
+    "layer": "background",
+    "cost": "low"
+  },
+  {
+    "name": "Circle",
+    "id": "circle",
+    "layer": "main",
+    "cost": "very-low"
+  },
+  {
+    "name": "Ripples",
+    "id": "ripples",
+    "layer": "main",
+    "cost": "low"
   }
 ]
