@@ -8,6 +8,7 @@ export const nativeCapture: (path: string) => boolean;
 export const nativeCaptureReady: () => boolean;
 /** "fps|cpuMs" */
 export const nativeSetPaused: (paused: boolean) => void;
+export const nativeSetRenderScale: (scale: number) => void;
 export const nativeGetStats: () => string;
 export const nativeResize: (width: number, height: number) => void;
 export const nativeDispose: () => void;

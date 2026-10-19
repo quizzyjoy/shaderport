@@ -44,6 +44,8 @@ public:
     void SetPointer(float x, float y, float active);
     void SetFixedTime(double time, bool fixed);
     void SetPaused(bool paused);
+    /** 0.25..1.0 — render the effect chain at a lower resolution and upsample to the screen. */
+    void SetRenderScale(float scale);
     void RequestCapture(const std::string &path);
     bool CaptureReady() const { return captureReady_.load(); }
     void Resize(int width, int height);
@@ -66,8 +68,11 @@ private:
     void DestroyPrograms();
     void EnsureRttTargets(int width, int height);
     void DestroyRttTargets();
+    void EnsureOutputTarget(int width, int height);
+    void DestroyOutputTarget();
+    bool EnsureBlit();
     void PackAndDraw(double time);
-    void PackProgram(const ProgramState &state, double time);
+    void PackProgram(const ProgramState &state, double time, int viewWidth, int viewHeight);
     void WriteValue(std::vector<uint8_t> &buffer, const UboMember &member,
                     const std::vector<float> &values) const;
     void WriteArray(std::vector<uint8_t> &buffer, const UboMember &member,
@@ -89,6 +94,14 @@ private:
     GLuint rttFbo_[2] = {0, 0};
     int rttWidth_ = 0;
     int rttHeight_ = 0;
+
+    GLuint outTex_ = 0;
+    GLuint outFbo_ = 0;
+    int outWidth_ = 0;
+    int outHeight_ = 0;
+    GLuint blitProgram_ = 0;
+    GLint blitSampler_ = -1;
+    float renderScale_ = 1.0f;
 
     std::mutex mutex_;
     std::unordered_map<std::string, std::vector<float>> params_;

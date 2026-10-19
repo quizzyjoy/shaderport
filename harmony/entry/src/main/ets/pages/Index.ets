@@ -10,6 +10,7 @@ import {
   nativeSetParam,
   nativeSetPaused,
   nativeSetPointer,
+  nativeSetRenderScale,
 } from 'libentry.so';
 import {
   EffectSummary,
@@ -37,6 +38,7 @@ struct Index {
   @State paused: boolean = false;
   @State showStats: boolean = true;
   @State showPanel: boolean = true;
+  @State renderScale: number = 1.0;
   private started: boolean = false;
   private filesDir: string = '';
   private statsTimer: number = -1;
@@ -103,6 +105,19 @@ struct Index {
 
   private togglePanel(): void {
     this.showPanel = !this.showPanel;
+  }
+
+  private cycleScale(): void {
+    let next: number = 1.0;
+    if (this.renderScale === 1.0) {
+      next = 0.75;
+    } else if (this.renderScale === 0.75) {
+      next = 0.5;
+    } else {
+      next = 1.0;
+    }
+    this.renderScale = next;
+    nativeSetRenderScale(next);
   }
 
   private effectIndex(): number {
@@ -362,6 +377,13 @@ struct Index {
             .height(34)
             .layoutWeight(1)
             .onSelect((index: number) => this.select(this.effects[index].id))
+
+          Button(this.renderScale === 1.0 ? '1x' : `${this.renderScale}x`)
+            .fontSize(11)
+            .width(54)
+            .height(34)
+            .backgroundColor(this.renderScale === 1.0 ? '#33FFFFFF' : '#5b18ca')
+            .onClick(() => this.cycleScale())
 
           Button('Perf')
             .fontSize(11)

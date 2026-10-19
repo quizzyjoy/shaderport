@@ -205,6 +205,19 @@ napi_value NativeSetPaused(napi_env env, napi_callback_info info) {
     return MakeUndefined(env);
 }
 
+napi_value NativeSetRenderScale(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return MakeUndefined(env);
+    }
+    double scale = 1.0;
+    napi_get_value_double(env, args[0], &scale);
+    EffectRenderer::Get().SetRenderScale(static_cast<float>(scale));
+    return MakeUndefined(env);
+}
+
 napi_value NativeGetStats(napi_env env, napi_callback_info info) {
     (void)info;
     const std::string stats = EffectRenderer::Get().StatsText();
@@ -234,6 +247,7 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"nativeCapture", nullptr, NativeCapture, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeCaptureReady", nullptr, NativeCaptureReady, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeSetPaused", nullptr, NativeSetPaused, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"nativeSetRenderScale", nullptr, NativeSetRenderScale, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeGetStats", nullptr, NativeGetStats, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeResize", nullptr, NativeResize, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"nativeDispose", nullptr, NativeDispose, nullptr, nullptr, nullptr, napi_default, nullptr},

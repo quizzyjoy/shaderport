@@ -25,6 +25,26 @@ void main() {
 }
 )";
 
+constexpr const char *kBlitVertexShader = R"(#version 300 es
+precision highp float;
+layout(location = 0) in vec2 aPos;
+out vec2 vUv;
+void main() {
+    vUv = aPos * 0.5 + 0.5;
+    gl_Position = vec4(aPos, 0.0, 1.0);
+}
+)";
+
+constexpr const char *kBlitFragmentShader = R"(#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uTex;
+out vec4 fragColor;
+void main() {
+    fragColor = texture(uTex, vUv);
+}
+)";
+
 GLuint CompileShader(GLenum type, const char *source) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
@@ -189,6 +209,17 @@ void EffectRenderer::SetFixedTime(double time, bool fixed) {
 void EffectRenderer::SetPaused(bool paused) {
     std::lock_guard<std::mutex> lock(mutex_);
     paused_ = paused;
+}
+
+void EffectRenderer::SetRenderScale(float scale) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (scale < 0.25f) {
+        scale = 0.25f;
+    }
+    if (scale > 1.0f) {
+        scale = 1.0f;
+    }
+    renderScale_ = scale;
 }
 
 void EffectRenderer::RequestCapture(const std::string &path) {
@@ -444,13 +475,95 @@ void EffectRenderer::DestroyRttTargets() {
     rttHeight_ = 0;
 }
 
+void EffectRenderer::EnsureOutputTarget(int width, int height) {
+    if (outWidth_ == width && outHeight_ == height && outFbo_ != 0) {
+        return;
+    }
+    if (outTex_ == 0) {
+        glGenTextures(1, &outTex_);
+    }
+    glBindTexture(GL_TEXTURE_2D, outTex_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (outFbo_ == 0) {
+        glGenFramebuffers(1, &outFbo_);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, outFbo_);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, outTex_, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    outWidth_ = width;
+    outHeight_ = height;
+}
+
+void EffectRenderer::DestroyOutputTarget() {
+    if (outFbo_ != 0) {
+        glDeleteFramebuffers(1, &outFbo_);
+        outFbo_ = 0;
+    }
+    if (outTex_ != 0) {
+        glDeleteTextures(1, &outTex_);
+        outTex_ = 0;
+    }
+    outWidth_ = 0;
+    outHeight_ = 0;
+}
+
+bool EffectRenderer::EnsureBlit() {
+    if (blitProgram_ != 0) {
+        return true;
+    }
+    GLuint vs = CompileShader(GL_VERTEX_SHADER, kBlitVertexShader);
+    GLuint fs = CompileShader(GL_FRAGMENT_SHADER, kBlitFragmentShader);
+    if (vs == 0 || fs == 0) {
+        if (vs != 0) glDeleteShader(vs);
+        if (fs != 0) glDeleteShader(fs);
+        return false;
+    }
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    GLint linked = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (linked != GL_TRUE) {
+        glDeleteProgram(program);
+        return false;
+    }
+    blitProgram_ = program;
+    glUseProgram(blitProgram_);
+    blitSampler_ = glGetUniformLocation(blitProgram_, "uTex");
+    glUniform1i(blitSampler_, 0);
+    return true;
+}
+
 void EffectRenderer::PackAndDraw(double time) {
     const int count = static_cast<int>(programs_.size());
     if (count == 0) {
         return;
     }
+
+    int renderWidth = static_cast<int>(static_cast<float>(width_) * renderScale_ + 0.5f);
+    int renderHeight = static_cast<int>(static_cast<float>(height_) * renderScale_ + 0.5f);
+    if (renderWidth < 1) {
+        renderWidth = 1;
+    }
+    if (renderHeight < 1) {
+        renderHeight = 1;
+    }
+    const bool scaled = (renderWidth != width_ || renderHeight != height_);
+
     if (count > 1) {
-        EnsureRttTargets(width_, height_);
+        EnsureRttTargets(renderWidth, renderHeight);
+    }
+    if (scaled) {
+        EnsureOutputTarget(renderWidth, renderHeight);
     }
 
     for (int i = 0; i < count; ++i) {
@@ -459,8 +572,9 @@ void EffectRenderer::PackAndDraw(double time) {
             continue;
         }
         const bool isFinal = (i == count - 1);
-        glBindFramebuffer(GL_FRAMEBUFFER, isFinal ? 0 : rttFbo_[i % 2]);
-        glViewport(0, 0, width_, height_);
+        const GLuint target = isFinal ? (scaled ? outFbo_ : 0) : rttFbo_[i % 2];
+        glBindFramebuffer(GL_FRAMEBUFFER, target);
+        glViewport(0, 0, renderWidth, renderHeight);
         if (isFinal) {
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         } else {
@@ -469,7 +583,7 @@ void EffectRenderer::PackAndDraw(double time) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(state.program);
-        PackProgram(state, time);
+        PackProgram(state, time, renderWidth, renderHeight);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, state.ubo);
 
         if (i > 0) {
@@ -481,14 +595,26 @@ void EffectRenderer::PackAndDraw(double time) {
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
+    if (scaled) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, width_, height_);
+        if (EnsureBlit()) {
+            glUseProgram(blitProgram_);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, outTex_);
+            glBindVertexArray(vao_);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+    }
+
     glBindVertexArray(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void EffectRenderer::PackProgram(const ProgramState &state, double time) {
+void EffectRenderer::PackProgram(const ProgramState &state, double time, int viewWidth, int viewHeight) {
     std::vector<uint8_t> buffer(static_cast<size_t>(state.uboSize), 0);
-    const float vw = static_cast<float>(width_);
-    const float vh = static_cast<float>(height_);
+    const float vw = static_cast<float>(viewWidth);
+    const float vh = static_cast<float>(viewHeight);
     const float aspect = vh > 0.0f ? vw / vh : 1.0f;
 
     for (const auto &member : state.members) {
@@ -654,6 +780,11 @@ void EffectRenderer::Dispose() {
         eglMakeCurrent(display_, surface_, surface_, context_);
         DestroyPrograms();
         DestroyRttTargets();
+        DestroyOutputTarget();
+        if (blitProgram_ != 0) {
+            glDeleteProgram(blitProgram_);
+            blitProgram_ = 0;
+        }
         if (vbo_ != 0) glDeleteBuffers(1, &vbo_);
         if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
         vbo_ = 0;

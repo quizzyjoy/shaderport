@@ -57,6 +57,7 @@ hdc -t <device> shell aa start -a EntryAbility -b com.quizzyjoy.shaderport.demo
   - `boolean` → Switch
 - **Reset**：恢复当前效果默认参数
 - **Pause / Play**：冻结/恢复动画时间
+- **Scale**：`1x / 0.75x / 0.5x`；低分辨率渲染整条效果链后线性上采样到屏幕（重背景效果的性能出口）
 - **Capture**：把当前帧写成 `capture-<id>.rgba`（`uint32 w/h + RGBA`）到应用沙箱
 - **FPS / CPU**：右上角显示 EMA 帧率与 CPU 提交时间
 

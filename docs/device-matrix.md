@@ -83,6 +83,18 @@
 - `MeshGradient` 严重超标（11.8 fps），已把 cost 从 `low` 改为 `high`；`FlowingGradient` 改为 `medium`。
 - 背景层建议按 1/2~1/4 分辨率渲染（`MeshGradient` / `FlowingGradient` / `Aurora`），主视效层再全分辨率。
 
+### 4.1 渲染档位（Scale）
+
+demo 的 `Scale` 按钮把整条效果链渲染到低分辨率 FBO，再线性上采样到屏幕。模拟器（Plasma）实测：
+
+| Scale | FPS |
+|---|---|
+| 1x | 34.1 |
+| 0.75x | 37.4 |
+| 0.5x | 41.1 |
+
+模拟器本身受软件/CPU 限制，提升有限；真机（Mate 80）在 `MeshGradient`（1x 11.8 fps）上的档位收益待设备重连后补测。
+
 ## 5. 尚未测量
 
 | 项 | 说明 |
