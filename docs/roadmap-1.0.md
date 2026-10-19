@@ -81,6 +81,8 @@
 
 **交互与窗口**：touch / hover / mouse 已归一化为 `uPointer` 并送到 native；覆盖层使用 `HitTestMode.Transparent`，XComponent 仍能收到事件。折叠屏展开/折叠实测触发 `resize 2224×2288 ↔ 1080×2296`，RTT 纹理自动重建，2-pass 效果（Glow）在两种尺寸下均正常渲染。
 
+**示例工程**：48 个效果的横向列表 + 由 `spec.props[].ui` 自动生成的参数面板（`range` / `color` / `select` / `position` / `boolean`），参数改动即时写入 native UBO；自动轮播已移除，改为手动切换 + `Capture` 按钮按需抓帧。
+
 `CursorRipples` 已接入并通过指针未激活时的严格 diff（max 13，2 pass）。指针激活时的涟漪是**有状态模拟**（跨帧历史），因此只做定性验证：注入 swipe 后 native 收到 `pointer down 0.2248,0.3405`，画面出现扰动；不做逐像素 diff。
 
 > 已落地：`spec.resolved` 现在由 `tools/export-wgsl` 从上游 uniform store 导出**最终值**（颜色在 P3-linear 工作空间、位置已完成 Y 翻转、枚举已编码、色标数组已打包）。导出器还会执行一次 `ir.onBeforeRender`，把每帧 CPU 生成的 extraFields（`meshAnchors` / `convA..D`）写回 store 并写入 resolved；native/JS 打包器优先使用 resolved，数组按 `GL_UNIFORM_ARRAY_STRIDE` 写入。

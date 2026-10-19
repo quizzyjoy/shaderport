@@ -8,13 +8,15 @@ import {
   nativeSetEffect,
   nativeSetParam,
   nativeSetPointer,
-  nativeSetTime,
 } from 'libentry.so';
 import {
   EffectSummary,
+  ParamDescriptor,
   ParamValue,
   PassSource,
+  encodeParam,
   getDefaultParams,
+  getParamDescriptors,
   getPassSources,
   initShaderPort,
   listEffects,
@@ -27,9 +29,9 @@ struct Index {
   @State status: string = 'booting';
   @State effects: EffectSummary[] = [];
   @State current: string = '';
+  @State params: ParamDescriptor[] = [];
   private started: boolean = false;
   private filesDir: string = '';
-  private autoIndex: number = 0;
   private viewWidth: number = 1;
   private viewHeight: number = 1;
 
@@ -43,7 +45,7 @@ struct Index {
     nativeDispose();
   }
 
-  private apply(id: string): void {
+  private select(id: string): void {
     try {
       const sources: PassSource[] = getPassSources(id);
       const fragments: string[] = [];
@@ -55,22 +57,37 @@ struct Index {
         instances.push(sources[i].instance);
       }
       nativeSetEffect(fragments, blocks, instances);
-      const params: ParamValue[] = getDefaultParams(id);
-      for (let i = 0; i < params.length; i++) {
-        nativeSetParam(params[i].name, params[i].values);
+      const values: ParamValue[] = getDefaultParams(id);
+      for (let i = 0; i < values.length; i++) {
+        nativeSetParam(values[i].name, values[i].values);
       }
-      // Freeze at the reference time so the captured frame can be diffed, then unfreeze.
-      nativeSetTime(1.0, true);
       this.current = id;
-      this.status = `${id} · ${params.length} params`;
-      const path: string = `${this.filesDir}/capture-${id}.rgba`;
-      setTimeout(() => {
-        nativeCapture(path);
-        this.pollCapture(id);
-      }, 400);
+      this.params = getParamDescriptors(id);
+      this.status = `${id} · ${sources.length}p · ${values.length} params`;
     } catch (error) {
       this.status = `error: ${error}`;
     }
+  }
+
+  private updateParam(index: number, value: ESObject): void {
+    const param: ParamDescriptor = this.params[index];
+    try {
+      const encoded: ParamValue = encodeParam(this.current, param.name, value);
+      nativeSetParam(encoded.name, encoded.values);
+      param.value = value;
+      this.params = this.params.slice();
+    } catch (error) {
+      this.status = `error: ${error}`;
+    }
+  }
+
+  private capture(): void {
+    const path: string = `${this.filesDir}/capture-${this.current}.rgba`;
+    if (!nativeCapture(path)) {
+      this.status = 'capture failed';
+      return;
+    }
+    this.pollCapture(this.current);
   }
 
   private pollCapture(id: string): void {
@@ -79,8 +96,7 @@ struct Index {
       attempts++;
       if (nativeCaptureReady()) {
         clearInterval(timer);
-        nativeSetTime(0, false);
-        this.status = `${id} captured · ${this.current}`;
+        this.status = `${id} captured`;
       } else if (attempts > 50) {
         clearInterval(timer);
         this.status = `${id} capture timeout`;
@@ -88,21 +104,18 @@ struct Index {
     }, 100);
   }
 
-  private applyNext(): void {
-    if (this.autoIndex >= this.effects.length) {
-      this.status = 'all effects captured';
-      return;
-    }
-    const id: string = this.effects[this.autoIndex].id;
-    this.autoIndex++;
-    this.apply(id);
-    setTimeout(() => this.applyNext(), 1800);
-  }
-
   private pushPointer(x: number, y: number, active: number): void {
     const nx: number = Math.max(0, Math.min(1, x / this.viewWidth));
     const ny: number = Math.max(0, Math.min(1, y / this.viewHeight));
     nativeSetPointer(nx, ny, active);
+  }
+
+  private makeOptions(labels: string[]): SelectOption[] {
+    const out: SelectOption[] = [];
+    for (let i = 0; i < labels.length; i++) {
+      out.push({ value: labels[i] });
+    }
+    return out;
   }
 
   private start(surfaceId: string): void {
@@ -116,7 +129,91 @@ struct Index {
       return;
     }
     this.started = true;
-    this.applyNext();
+    this.select('plasma');
+  }
+
+  @Builder
+  paramRow(param: ParamDescriptor, index: number) {
+    if (param.kind === 'range' || param.kind === 'map') {
+      Row({ space: 8 }) {
+        Text(param.label).fontSize(11).fontColor(Color.White).width(92)
+        Slider({
+          value: Number(param.value),
+          min: param.min,
+          max: param.max,
+          step: param.step,
+        })
+          .layoutWeight(1)
+          .onChange((value: number) => this.updateParam(index, value))
+        Text(Number(param.value).toFixed(2)).fontSize(11).fontColor(Color.White).width(42)
+      }
+      .width('100%')
+      .height(34)
+    } else if (param.kind === 'color') {
+      Row({ space: 8 }) {
+        Text(param.label).fontSize(11).fontColor(Color.White).width(92)
+        TextInput({ text: param.value as string })
+          .height(28)
+          .fontSize(12)
+          .layoutWeight(1)
+          .onChange((text: string) => this.updateParam(index, text))
+      }
+      .width('100%')
+      .height(34)
+    } else if (param.kind === 'select' && param.options.length > 0) {
+      Row({ space: 8 }) {
+        Text(param.label).fontSize(11).fontColor(Color.White).width(92)
+        Select(this.makeOptions(param.options))
+          .selected(Math.max(0, param.optionValues.indexOf(param.value as string)))
+          .value(param.options[Math.max(0, param.optionValues.indexOf(param.value as string))])
+          .layoutWeight(1)
+          .onSelect((selected: number) => this.updateParam(index, param.optionValues[selected]))
+      }
+      .width('100%')
+      .height(34)
+    } else if (param.kind === 'position') {
+      Column({ space: 2 }) {
+        Text(param.label).fontSize(11).fontColor(Color.White).width('100%')
+        Row({ space: 8 }) {
+          Text('x').fontSize(10).fontColor(Color.White)
+          Slider({
+            value: Number((param.value as Record<string, number>).x ?? 0.5),
+            min: 0,
+            max: 1,
+            step: 0.01,
+          })
+            .layoutWeight(1)
+            .onChange((value: number) => {
+              const point: Record<string, number> = param.value as Record<string, number>;
+              this.updateParam(index, { x: value, y: point.y ?? 0.5 });
+            })
+        }
+        Row({ space: 8 }) {
+          Text('y').fontSize(10).fontColor(Color.White)
+          Slider({
+            value: Number((param.value as Record<string, number>).y ?? 0.5),
+            min: 0,
+            max: 1,
+            step: 0.01,
+          })
+            .layoutWeight(1)
+            .onChange((value: number) => {
+              const point: Record<string, number> = param.value as Record<string, number>;
+              this.updateParam(index, { x: point.x ?? 0.5, y: value });
+            })
+        }
+      }
+      .width('100%')
+      .height(62)
+    } else if (typeof param.value === 'boolean') {
+      Row({ space: 8 }) {
+        Text(param.label).fontSize(11).fontColor(Color.White).width(92)
+        Toggle({ type: ToggleType.Switch, isOn: param.value as boolean })
+          .onChange((isOn: boolean) => this.updateParam(index, isOn))
+      }
+      .width('100%')
+      .height(34)
+    }
   }
 
   build() {
@@ -159,33 +256,62 @@ struct Index {
 
       Column() {
         Text(this.status)
-          .fontSize(14)
+          .fontSize(13)
           .fontColor(Color.White)
-          .padding(12)
+          .padding({ left: 12, right: 12, top: 8, bottom: 4 })
 
         Blank()
 
-        Row({ space: 8 }) {
-          ForEach(this.effects, (item: EffectSummary) => {
-            Button(item.name)
-              .fontSize(12)
-              .height(34)
-              .padding({ left: 12, right: 12 })
-              .backgroundColor(this.current === item.id ? '#5b18ca' : '#33FFFFFF')
-              .onClick(() => {
-                this.autoIndex = this.effects.length;
-                this.apply(item.id);
-              })
-          }, (item: EffectSummary) => item.id)
+        Column({ space: 4 }) {
+          Scroll() {
+            Row({ space: 6 }) {
+              ForEach(this.effects, (item: EffectSummary) => {
+                Button(item.name)
+                  .fontSize(11)
+                  .height(30)
+                  .padding({ left: 10, right: 10 })
+                  .backgroundColor(this.current === item.id ? '#5b18ca' : '#33FFFFFF')
+                  .onClick(() => this.select(item.id))
+              }, (item: EffectSummary) => item.id)
+            }
+          }
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.Off)
+          .width('100%')
+
+          Scroll() {
+            Column() {
+              ForEach(this.params, (param: ParamDescriptor, index: number) => {
+                this.paramRow(param, index)
+              }, (param: ParamDescriptor) => param.path)
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+          }
+          .height(140)
+          .width('100%')
+          .scrollBar(BarState.Auto)
+
+          Row({ space: 8 }) {
+            Button('Capture')
+              .fontSize(11)
+              .height(28)
+              .onClick(() => this.capture())
+            Blank()
+            Text(`${this.params.length} params`)
+              .fontSize(10)
+              .fontColor('#CCFFFFFF')
+          }
+          .width('100%')
         }
-        .padding(12)
+        .width('100%')
+        .padding({ left: 12, right: 12, bottom: 10, top: 6 })
+        .backgroundColor('#B3000000')
       }
       .width('100%')
       .height('100%')
       .justifyContent(FlexAlign.SpaceBetween)
       .alignItems(HorizontalAlign.Start)
-      // Overlay participates in hit testing (buttons work) and lets the XComponent underneath
-      // receive the same touch/pointer events.
       .hitTestBehavior(HitTestMode.Transparent)
     }
     .width('100%')

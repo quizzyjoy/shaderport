@@ -5,6 +5,7 @@ import {
   EffectPass,
   EffectSpec,
   EffectSummary,
+  ParamDescriptor,
   ParamValue,
   PassSource,
   PropSpec,
@@ -177,6 +178,70 @@ function paramsFor(spec: EffectSpec, node: string): ParamValue[] {
     out.push({ name: `n_${node}.${name}`, values: toNumbers(value, prop.ui) });
   }
   return out;
+}
+
+/** Editable parameter descriptors for the effect's own node (not the composite base). */
+export function getParamDescriptors(id: string): ParamDescriptor[] {
+  const spec: EffectSpec = getEffect(id);
+  const node: string = `n_${spec.ubo.node}`;
+  const names: string[] = Object.keys(spec.defaults);
+  const out: ParamDescriptor[] = [];
+
+  for (let i = 0; i < names.length; i++) {
+    const name: string = names[i];
+    const prop: PropSpec = spec.props[name];
+    const ui: ESObject = prop === undefined || prop === null ? undefined : prop.ui;
+    const uiObj: Record<string, ESObject> =
+      ui === undefined || ui === null ? {} : (ui as Record<string, ESObject>);
+
+    const rawType: ESObject = uiObj.type;
+    let kind: string = 'other';
+    if (Array.isArray(rawType)) {
+      const types: ESObject[] = rawType as ESObject[];
+      kind = types.length > 0 ? (types[0] as string) : 'other';
+    } else if (typeof rawType === 'string') {
+      kind = rawType as string;
+    }
+
+    const label: string = uiObj.label === undefined ? name : (uiObj.label as string);
+    const min: number = uiObj.min === undefined ? 0 : (uiObj.min as number);
+    const max: number = uiObj.max === undefined ? 1 : (uiObj.max as number);
+    const step: number = uiObj.step === undefined ? 0.01 : (uiObj.step as number);
+
+    const options: string[] = [];
+    const optionValues: string[] = [];
+    const rawOptions: ESObject = uiObj.options;
+    if (Array.isArray(rawOptions)) {
+      const list: ESObject[] = rawOptions as ESObject[];
+      for (let k = 0; k < list.length; k++) {
+        const option: Record<string, ESObject> = list[k] as Record<string, ESObject>;
+        options.push((option.label as string) ?? (option.value as string));
+        optionValues.push(option.value as string);
+      }
+    }
+
+    out.push({
+      name: name,
+      path: `${node}.${name}`,
+      kind: kind,
+      label: label,
+      min: min,
+      max: max,
+      step: step,
+      value: spec.defaults[name],
+      options: options,
+      optionValues: optionValues,
+    });
+  }
+  return out;
+}
+
+/** Convert one UI value into the UBO path/values the native renderer expects. */
+export function encodeParam(id: string, name: string, value: ESObject): ParamValue {
+  const spec: EffectSpec = getEffect(id);
+  const prop: PropSpec = spec.props[name];
+  const ui: ESObject = prop === undefined || prop === null ? undefined : prop.ui;
+  return { name: `n_${spec.ubo.node}.${name}`, values: toNumbers(value, ui) };
 }
 
 function rawNumbers(value: ESObject): number[] {

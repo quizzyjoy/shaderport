@@ -99,6 +99,19 @@ export interface PassSource {
   instance: string;
 }
 
+export interface ParamDescriptor {
+  name: string;
+  path: string;
+  kind: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: ESObject;
+  options: string[];
+  optionValues: string[];
+}
+
 export interface ValidationResult {
   ok: boolean;
   errors: string[];

@@ -5,6 +5,8 @@ export {
   getShaderSource,
   getPassSources,
   getDefaultParams,
+  getParamDescriptors,
+  encodeParam,
   validateParams,
 } from './src/main/ets/api';
 
@@ -16,6 +18,7 @@ export {
   EffectSpec,
   EffectSummary,
   EffectUbo,
+  ParamDescriptor,
   ParamValue,
   PassSource,
   PropSpec,
